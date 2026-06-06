@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply font-sans text-gray-900 bg-white; }
+  * { @apply box-border; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-teal text-white px-6 py-3 rounded-lg font-semibold hover:bg-teal-dark transition-colors duration-200 inline-flex items-center gap-2;
+  }
+  .btn-secondary {
+    @apply border-2 border-deep text-deep px-6 py-3 rounded-lg font-semibold hover:bg-deep hover:text-white transition-colors duration-200 inline-flex items-center gap-2;
+  }
+  .btn-white {
+    @apply bg-white text-deep px-6 py-3 rounded-lg font-semibold hover:bg-mist transition-colors duration-200 inline-flex items-center gap-2;
+  }
+  .card {
+    @apply bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden;
+  }
+  .card-header {
+    @apply bg-deep text-white px-5 py-3 font-semibold text-sm border-l-4 border-teal;
+  }
+  .stat-card {
+    @apply bg-deep text-white rounded-xl p-5 flex flex-col gap-1;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .badge-green  { @apply badge bg-teal text-white; }
+  .badge-blue   { @apply badge bg-blue-600 text-white; }
+  .badge-red    { @apply badge bg-tomato text-white; }
+  .badge-amber  { @apply badge bg-amber text-white; }
+  .badge-gray   { @apply badge bg-gray-400 text-white; }
+  .input {
+    @apply w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent bg-white;
+  }
+  .table-th {
+    @apply bg-deep text-white text-xs font-semibold px-4 py-3 text-left;
+  }
+  .table-td {
+    @apply px-4 py-3 text-sm text-gray-700 border-b border-gray-100;
+  }
+  .table-tr-even { @apply bg-white; }
+  .table-tr-odd  { @apply bg-gray-50; }
+  .section-label {
+    @apply text-xs font-bold uppercase tracking-widest text-teal mb-2;
+  }
+  .page-title {
+    @apply text-3xl font-bold text-deep mb-1;
+  }
+  .demo-banner {
+    @apply bg-amber-50 border border-amber-300 text-amber-800 px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 mb-6;
+  }
+}

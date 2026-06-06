@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /dashboard
+
+# Allow everything else
+Allow: /
+
+# Optional sitemap
+Sitemap: https://tazemi.com/sitemap.xml
