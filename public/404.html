@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirect</title>
+    <script>
+      const path = window.location.pathname.replace(/\/Tazemi\/?/, "");
+      window.location.replace(
+        "/Tazemi/?redirect=" +
+          encodeURIComponent("/" + path + window.location.search),
+      );
+    </script>
+  </head>
+  <body>
+    Redirecting...
+  </body>
+</html>
