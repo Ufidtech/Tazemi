@@ -1,5 +1,5 @@
 import React from "react";
-import { Navbar, Footer, PageMeta } from "@components";
+import { Navbar, Footer, PageMeta } from "../../components";
 import content from "../../content";
 
 export default function Home() {
@@ -44,10 +44,10 @@ export default function Home() {
             {content.home.hero.sub}
           </p>
           <div className="flex flex-wrap gap-4">
-            <a href="/dashboard" className="btn-primary text-base">
+            <a href="/#/dashboard" className="btn-primary text-base">
               {content.home.hero.ctaPrimary}
             </a>
-            <a href="/product" className="btn-white text-base">
+            <a href="/#/product" className="btn-white text-base">
               {content.home.hero.ctaSecondary}
             </a>
           </div>
@@ -124,7 +124,7 @@ export default function Home() {
               </h2>
             </div>
             <a
-              href="/team"
+              href="/#/team"
               className="text-teal font-semibold text-sm hover:underline"
             >
               Meet everyone →
@@ -158,7 +158,7 @@ export default function Home() {
               See the Bio-Shield coating operation, IoT monitoring, R&D trials,
               and data analysis — all in one dashboard.
             </p>
-            <a href="/dashboard" className="btn-primary">
+            <a href="/#/dashboard" className="btn-primary">
               Open Dashboard →
             </a>
           </div>
@@ -168,7 +168,7 @@ export default function Home() {
               Investment enquiries, grant partnerships, or pilot partnerships —
               we'd like to hear from you.
             </p>
-            <a href="/contact" className="btn-white">
+            <a href="/#/contact" className="btn-white">
               Contact Us →
             </a>
           </div>

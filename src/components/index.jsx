@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 export function PageMeta({ title, description, url, image }) {
   useEffect(() => {
@@ -50,6 +51,13 @@ export function PageMeta({ title, description, url, image }) {
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const links = [
+
+
+
+
+
+
+
     ["Home", "/"],
     ["About", "/about"],
     ["Product", "/product"],
@@ -62,26 +70,47 @@ export function Navbar() {
     <nav className="bg-deep text-white sticky top-0 z-50 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <a href="/" className="flex items-center gap-2">
+
+
+
+
+          <Link to="/" className="flex items-center gap-2">
             <span className="text-teal font-black text-xl tracking-wide">
               TAZÉMI
             </span>
             <span className="text-white/70 text-sm font-medium hidden sm:block">
               AGRITECH
             </span>
-          </a>
+
+          </Link>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             {links.map(([l, h]) => (
-              <a key={l} href={h} className="hover:text-teal transition-colors">
+              <Link key={l} to={h} className="hover:text-teal transition-colors">
                 {l}
-              </a>
+              </Link>
             ))}
-            <a
-              href="/dashboard"
+            <Link
+              to="/dashboard"
               className="bg-teal text-white px-4 py-2 rounded-lg hover:bg-teal-dark transition-colors font-semibold"
             >
               Dashboard
-            </a>
+
+            </Link>
           </div>
           <button onClick={() => setOpen(!open)} className="md:hidden p-2">
             {[0, 1, 2].map((i) => (
@@ -91,17 +120,29 @@ export function Navbar() {
         </div>
         {open && (
           <div className="md:hidden pb-4 flex flex-col gap-3 text-sm">
+
+
+
+
+
+
+
+
+
+
+
             {links.map(([l, h]) => (
-              <a key={l} href={h} className="hover:text-teal">
+              <Link key={l} to={h} className="hover:text-teal">
                 {l}
-              </a>
+              </Link>
             ))}
-            <a
-              href="/dashboard"
+            <Link
+              to="/dashboard"
               className="bg-teal text-white px-4 py-2 rounded-lg text-center"
             >
               Dashboard
-            </a>
+
+            </Link>
           </div>
         )}
       </div>
@@ -124,12 +165,12 @@ export function Footer() {
           <div className="font-semibold mb-3">Navigation</div>
           <div className="flex flex-col gap-2 text-sm text-white/70">
             {[
-              ["About", "/about"],
-              ["Product", "/product"],
-              ["Team", "/team"],
-              ["Impact", "/impact"],
-              ["Investors", "/investors"],
-              ["Contact", "/contact"],
+              ["About", "https://ufidtech.github.io/Tazemi/#/about"],
+              ["Product", "https://ufidtech.github.io/Tazemi/#/product"],
+              ["Team", "https://ufidtech.github.io/Tazemi/#/team"],
+              ["Impact", "https://ufidtech.github.io/Tazemi/#/impact"],
+              ["Investors", "https://ufidtech.github.io/Tazemi/#/investors"],
+              ["Contact", "https://ufidtech.github.io/Tazemi/#/contact"],
             ].map(([l, h]) => (
               <a key={l} href={h} className="hover:text-teal transition-colors">
                 {l}
@@ -156,6 +197,32 @@ export function Footer() {
 
 export function Sidebar({ active }) {
   const links = [
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ["📊", "CEO Dashboard", "/dashboard"],
     ["📡", "IoT Monitoring", "/dashboard/iot"],
     ["⚙️", "Coating Operations", "/dashboard/operations"],
@@ -166,30 +233,42 @@ export function Sidebar({ active }) {
   return (
     <aside className="w-64 bg-deep text-white min-h-screen flex flex-col shrink-0">
       <div className="px-5 py-5 border-b border-white/10">
-        <a href="/" className="flex items-center gap-2">
+
+
+
+
+        <Link to="/" className="flex items-center gap-2">
           <span className="text-teal font-black text-lg">TAZÉMI</span>
           <span className="text-white/60 text-xs">DASHBOARD</span>
-        </a>
+
+        </Link>
       </div>
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
-        {links.map(([icon, label, href]) => (
-          <a
-            key={href}
-            href={href}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active === href ? "bg-teal text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
-          >
-            <span>{icon}</span>
-            {label}
-          </a>
-        ))}
+        {links.map(([icon, label, href]) => {
+          const to =
+            new URL(href).pathname.replace("/Tazemi", "") + new URL(href).hash;
+          return (
+            <Link
+              key={href}
+              to={to}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active === href ? "bg-teal text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
+            >
+              <span>{icon}</span>
+              {label}
+            </Link>
+          );
+        })}
       </nav>
       <div className="px-5 py-4 border-t border-white/10">
-        <a
-          href="/"
+
+
+        <Link
+          to="/"
           className="text-white/50 hover:text-teal text-xs transition-colors"
         >
           ← Back to Website
-        </a>
+
+        </Link>
       </div>
     </aside>
   );

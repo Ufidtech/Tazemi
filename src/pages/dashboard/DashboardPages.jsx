@@ -7,7 +7,7 @@ import {
   aggregators,
   trucks,
   kpis,
-} from "../../services/demoData";
+} from "../../data/index.js";
 import {
   LineChart,
   Line,

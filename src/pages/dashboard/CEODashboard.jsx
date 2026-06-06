@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { DashboardLayout, DemoBanner, StatCard, Badge } from "@components";
-import { kpis, activity, aggregators, trucks } from "../../services/demoData";
+import { kpis, activity, trucks } from "../../data/index.js";
 
 const COLORS = ["#1D9E75", "#085041", "#D85A30", "#17835f"];
 
@@ -199,7 +199,7 @@ export default function CEODashboard() {
                         </div>
                       </div>
                       <a
-                        href="/dashboard/iot"
+                        href="/#/dashboard/iot"
                         className="text-teal text-xs hover:underline shrink-0"
                       >
                         View →
@@ -213,10 +213,10 @@ export default function CEODashboard() {
             <div className="section-label mb-3">Quick Links</div>
             <div className="grid grid-cols-2 gap-2">
               {[
-                ["📡", "IoT Monitoring", "/dashboard/iot"],
-                ["⚙️", "Operations", "/dashboard/operations"],
-                ["🏢", "Aggregators", "/dashboard/aggregators"],
-                ["🔬", "R&D", "/dashboard/rd"],
+                ["📡", "IoT Monitoring", "/#/dashboard/iot"],
+                ["⚙️", "Operations", "/#/dashboard/operations"],
+                ["🏢", "Aggregators", "/#/dashboard/aggregators"],
+                ["🔬", "R&D", "/#/dashboard/rd"],
               ].map(([i, l, h]) => (
                 <a
                   key={l}
