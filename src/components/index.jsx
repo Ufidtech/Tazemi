@@ -89,17 +89,7 @@ export function Navbar() {
             >
               Login / Sign Up
             </Link>
-
-
-
-
-
-
           </div>
-
-
-
-
           <button
             onClick={() => setOpen(!open)}
             className="md:hidden p-2"
@@ -121,9 +111,6 @@ export function Navbar() {
             >
               Login / Sign Up
             </Link>
-
-
-
           </div>
         )}
       </div>
@@ -315,9 +302,13 @@ export function DashboardLayout({ children, active, title }) {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
-              {title && <h1 className="text-3xl font-bold text-deep">{title}</h1>}
+              {title && (
+                <h1 className="text-3xl font-bold text-deep">{title}</h1>
+              )}
               {user?.email && (
-                <div className="text-xs text-gray-500 mt-1">Signed in as {user.email}</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Signed in as {user.email}
+                </div>
               )}
             </div>
             <button
