@@ -7,7 +7,10 @@ import Team from "./pages/public/Team";
 import Impact from "./pages/public/Impact";
 import Investors from "./pages/public/Investors";
 import Contact from "./pages/public/Contact";
+import Auth from "./pages/public/Auth";
 import CEODashboard from "./pages/dashboard/CEODashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 import IoTMonitoring from "./pages/dashboard/IoTMonitoring";
 import {
   Operations,
@@ -29,12 +32,57 @@ export default function App() {
         <Route path="/impact" element={<Impact />} />
         <Route path="/investors" element={<Investors />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/dashboard" element={<CEODashboard />} />
-        <Route path="/dashboard/iot" element={<IoTMonitoring />} />
-        <Route path="/dashboard/operations" element={<Operations />} />
-        <Route path="/dashboard/aggregators" element={<Aggregators />} />
-        <Route path="/dashboard/rd" element={<RnD />} />
-        <Route path="/dashboard/analysis" element={<TruckAnalysis />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <CEODashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/iot"
+          element={
+            <ProtectedRoute>
+              <IoTMonitoring />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/operations"
+          element={
+            <ProtectedRoute>
+              <Operations />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/aggregators"
+          element={
+            <ProtectedRoute>
+              <Aggregators />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/rd"
+          element={
+            <ProtectedRoute>
+              <RnD />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/analysis"
+          element={
+            <ProtectedRoute>
+              <TruckAnalysis />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="*"
           element={

@@ -1,6 +1,7 @@
 import React from "react";
 import { Navbar, Footer, PageMeta } from "../../components";
-import { team } from "../../services/demoData";
+// import { team } from "../../services/demoData";
+import { team } from "../../data/index.js";
 import content from "../../content";
 
 export default function Team() {

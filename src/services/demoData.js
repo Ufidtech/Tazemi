@@ -1,35 +1,85 @@
-// Service wrapper around static demo data (src/data/index.js)
-// Exposes the raw data and small helper utilities to centralize access.
-import * as data from "@data";
+import { fetchAggregators, fetchAlerts, fetchActivity, fetchBatches, fetchDashboardSummary, fetchHealth, fetchTrials, fetchTrucks } from "./api.js";
 
-export * from "@data";
+const cache = new Map();
 
-export function getAggregators() {
-    return data.aggregators;
+async function cached(key, loader) {
+    if (!cache.has(key)) {
+        cache.set(
+            key,
+            loader().catch((error) => {
+                cache.delete(key);
+                throw error;
+            }),
+        );
+    }
+    return cache.get(key);
 }
 
-export function getTrucks() {
-    return data.trucks;
+export async function getAggregators() {
+    return cached("aggregators", () => fetchAggregators([]));
 }
 
-export function getBatches() {
-    return data.batches;
+export async function getTrucks() {
+    const data = await cached("trucks", () => fetchTrucks([]));
+    return data;
 }
 
-export function getKpis() {
-    return data.kpis;
+export async function getBatches() {
+    return cached("batches", () => fetchBatches([]));
 }
 
-export function getActivity(limit = 20) {
-    return data.activity.slice(0, limit);
+export async function getTrials() {
+    return cached("trials", () => fetchTrials([]));
 }
 
-export function findTruckById(id) {
-    return data.trucks.find((t) => t.id === id) || null;
+export async function getAlerts() {
+    return cached("alerts", () => fetchAlerts([]));
 }
 
-export function filterTrucksByStatus(status) {
-    return data.trucks.filter((t) => t.status === status);
+export async function getDashboardSummary() {
+    return fetchDashboardSummary(null);
 }
 
-export default data;
+export async function getDashboardAnalytics() {
+    return fetchDashboardSummary(null);
+}
+
+export async function getKpis() {
+    const summary = await getDashboardSummary();
+    return summary?.dashboard_kpis || summary?.kpis || summary || {};
+}
+
+export async function getActivity(limit = 20) {
+    const items = await fetchActivity([]);
+    return Array.isArray(items) ? items.slice(0, limit) : [];
+}
+
+export async function findTruckById(id) {
+    const trucks = await getTrucks();
+    return trucks.find((t) => t.id === id) || null;
+}
+
+export async function filterTrucksByStatus(status) {
+    const trucks = await getTrucks();
+    return trucks.filter((t) => t.status === status);
+}
+
+export function clearDemoCache() {
+    cache.clear();
+}
+
+export default {
+    getAggregators,
+    getTrucks,
+    getBatches,
+    getTrials,
+    getAlerts,
+    getDashboardSummary,
+    getDashboardAnalytics,
+    getKpis,
+    getActivity,
+    findTruckById,
+    filterTrucksByStatus,
+    clearDemoCache,
+};
+

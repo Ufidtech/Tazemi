@@ -1,13 +1,12 @@
 // ── COATING OPERATIONS PAGE ──────────────────────────────────
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { DashboardLayout, DemoBanner, SearchBar, Badge } from "@components";
 import {
-  batches,
-  trials,
-  aggregators,
-  trucks,
-  kpis,
-} from "../../data/index.js";
+  fetchAggregators,
+  fetchBatches,
+  fetchTrials,
+  fetchTrucks,
+} from "../../services/api";
 import {
   LineChart,
   Line,
@@ -27,6 +26,13 @@ export function Operations() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [selected, setBatch] = useState(null);
+  const [batches, setBatches] = useState([]);
+
+  useEffect(() => {
+    fetchBatches()
+      .then((data) => setBatches(Array.isArray(data) ? data : []))
+      .catch(() => setBatches([]));
+  }, []);
 
   const filtered = batches.filter((b) => {
     const q = search.toLowerCase();
@@ -240,6 +246,21 @@ export function Aggregators() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [aggregators, setAggregators] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [trucks, setTrucks] = useState([]);
+
+  useEffect(() => {
+    fetchAggregators()
+      .then((data) => setAggregators(Array.isArray(data) ? data : []))
+      .catch(() => setAggregators([]));
+    fetchBatches()
+      .then((data) => setBatches(Array.isArray(data) ? data : []))
+      .catch(() => setBatches([]));
+    fetchTrucks()
+      .then((data) => setTrucks(Array.isArray(data) ? data : []))
+      .catch(() => setTrucks([]));
+  }, []);
 
   const filtered = aggregators.filter((a) => {
     const q = search.toLowerCase();
@@ -418,6 +439,13 @@ export function Aggregators() {
 export function RnD() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [trials, setTrials] = useState([]);
+
+  useEffect(() => {
+    fetchTrials()
+      .then((data) => setTrials(Array.isArray(data) ? data : []))
+      .catch(() => setTrials([]));
+  }, []);
 
   const filtered = trials.filter((t) => {
     const q = search.toLowerCase();
@@ -674,36 +702,108 @@ export function RnD() {
 export function TruckAnalysis() {
   const [search, setSearch] = useState("");
   const [selectedTruck, setSelectedTruck] = useState(null);
+  const [trucks, setTrucks] = useState([]);
 
-  const correlationData = trucks.map((t) => ({
-    truck: t.id,
-    temp: t.sensors.temp,
-    humidity: t.sensors.humidity,
-    spoilage: t.status === "alert" ? 35 : t.sensors.temp > 30 ? 18 : 8,
-  }));
+  useEffect(() => {
+    fetchTrucks()
+      .then((data) => setTrucks(Array.isArray(data) ? data : []))
+      .catch(() => setTrucks([]));
+  }, []);
 
-  const routeData = [
-    {
-      route: "Kano–Lagos A1",
-      avg_temp: 29.4,
-      avg_humidity: 71,
-      avg_duration: 24,
-      spoilage_rate: 7.4,
-      trips: 8,
-    },
-    {
-      route: "Kano–Lagos A2",
-      avg_temp: 32.8,
-      avg_humidity: 62,
-      avg_duration: 27,
-      spoilage_rate: 18.2,
-      trips: 4,
-    },
-  ];
+  const analysis = useMemo(() => {
+    const safeTrucks = Array.isArray(trucks) ? trucks : [];
 
-  const timelineData = trucks.find((t) => t.id === "TRK-001")?.history || [];
+    const riskScore = (truck) => {
+      const temp = truck?.sensors?.temp ?? 0;
+      const humidity = truck?.sensors?.humidity ?? 0;
+      if (truck.status === "alert") return 35;
+      if (temp >= 34 || humidity >= 75) return 18;
+      if (temp >= 30 || humidity >= 68) return 12;
+      return 7;
+    };
 
-  const filtered = trucks.filter((t) => {
+    const correlationData = safeTrucks.map((t) => ({
+      truck: t.id,
+      temp: t.sensors.temp,
+      humidity: t.sensors.humidity,
+      spoilage: riskScore(t),
+    }));
+
+    const grouped = safeTrucks.reduce((acc, truck) => {
+      const key = truck.route;
+      acc[key] = acc[key] || [];
+      acc[key].push(truck);
+      return acc;
+    }, {});
+
+    const routeData = Object.entries(grouped)
+      .map(([route, items]) => ({
+        route,
+        avg_temp: Number(
+          (
+            items.reduce((sum, t) => sum + (t.sensors.temp || 0), 0) /
+            items.length
+          ).toFixed(2),
+        ),
+        avg_humidity: Number(
+          (
+            items.reduce((sum, t) => sum + (t.sensors.humidity || 0), 0) /
+            items.length
+          ).toFixed(2),
+        ),
+        avg_duration: Number(
+          (
+            items.reduce(
+              (sum, t) => sum + (t.duration_hours || t.duration || 0),
+              0,
+            ) / items.length
+          ).toFixed(2),
+        ),
+        spoilage_rate: Number(
+          (
+            items.reduce((sum, t) => sum + riskScore(t), 0) / items.length
+          ).toFixed(2),
+        ),
+        trips: items.length,
+        status:
+          items.some((t) => t.status === "alert") ||
+          items.some((t) => riskScore(t) >= 15)
+            ? "High Risk"
+            : "Normal",
+      }))
+      .sort((a, b) => b.spoilage_rate - a.spoilage_rate);
+
+    const timelineData =
+      safeTrucks.find((t) => t.id === "TRK-001")?.history || [];
+    const humidTrips = safeTrucks.filter(
+      (t) => (t.sensors?.humidity ?? 0) > 70,
+    ).length;
+    const highHumidityTrips = safeTrucks.filter(
+      (t) => (t.sensors?.humidity ?? 0) > 65,
+    ).length;
+    const recommendation = routeData[0]
+      ? `Increase starch concentration for ${routeData[0].route} and review dispatch controls.`
+      : "Continue monitoring live telemetry.";
+
+    return {
+      correlationData,
+      routeData,
+      timelineData,
+      humidTrips,
+      highHumidityTrips,
+      recommendation,
+    };
+  }, [trucks]);
+
+  const {
+    correlationData,
+    routeData,
+    humidTrips,
+    highHumidityTrips,
+    recommendation,
+  } = analysis;
+
+  const filtered = (Array.isArray(trucks) ? trucks : []).filter((t) => {
     const q = search.toLowerCase();
     return (
       !q ||
@@ -723,18 +823,15 @@ export function TruckAnalysis() {
           🔬 Active Formulation Insight
         </div>
         <p className="text-gray-700 text-sm leading-relaxed">
-          <strong>Observation:</strong> Humidity {">"} 70% detected on the
-          Lokoja segment (Kano–Lagos A1 route) in 6 of 8 recorded trips. Peak
-          humidity correlates with 2.3× higher spoilage rate vs trips below 65%
-          humidity.
+          <strong>Observation:</strong> {highHumidityTrips} trips show humidity
+          above 65% and {humidTrips} exceed 70% in the current truck sample.
           <br />
-          <strong className="text-teal">Recommendation:</strong> Increase
-          cassava starch concentration from 2.0% to 2.5% in BS-v1.3 to
-          strengthen moisture barrier on this corridor.
+          <strong className="text-teal">Recommendation:</strong>{" "}
+          {recommendation}
           <br />
-          <strong className="text-tomato">Action:</strong> TRIAL-2026-005 now in
-          progress testing BS-v1.3 (2.5% starch). Results expected Week 3 June
-          2026.
+          <strong className="text-tomato">Action:</strong> Increase monitoring
+          on the highest-risk route and validate formulation adjustments against
+          live records.
         </p>
       </div>
 

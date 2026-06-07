@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pydantic
+firebase-admin
+python-multipart
+openpyxl
+reportlab

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -135,18 +135,55 @@ export default function IoTMonitoring() {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
 
-  const trucks = getTrucks();
+  const [trucks, setTrucks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = trucks.filter((t) => {
-    const q = search.toLowerCase();
-    const matchSearch =
-      !q ||
-      t.id.toLowerCase().includes(q) ||
-      t.aggregator.toLowerCase().includes(q) ||
-      t.route.toLowerCase().includes(q) ||
-      t.status.includes(q);
-    const matchFilter = filter === "all" || t.status === filter;
-    return matchSearch && matchFilter;
+  useEffect(() => {
+    let mounted = true;
+    getTrucks()
+      .then((data) => {
+
+        console.log("[IoTMonitoring] trucks response:", data);
+        const normalized = Array.isArray(data) ? data : [];
+        console.log("[IoTMonitoring] normalized trucks:", normalized);
+        if (mounted) setTrucks(normalized);
+      })
+
+      .catch((error) => {
+        console.error("[IoTMonitoring] failed to load trucks:", error);
+        if (mounted) setTrucks([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const filtered = useMemo(
+    () =>
+      trucks.filter((t) => {
+        const q = search.toLowerCase();
+        const matchSearch =
+          !q ||
+          t.id.toLowerCase().includes(q) ||
+          t.aggregator.toLowerCase().includes(q) ||
+          t.route.toLowerCase().includes(q) ||
+          t.status.includes(q);
+        const matchFilter = filter === "all" || t.status === filter;
+        return matchSearch && matchFilter;
+      }),
+    [trucks, search, filter],
+  );
+
+  console.log("[IoTMonitoring] render state:", {
+    loading,
+    truckCount: trucks.length,
+    filteredCount: filtered.length,
+    filter,
+    search,
   });
 
   return (
@@ -176,100 +213,108 @@ export default function IoTMonitoring() {
         </div>
       </SearchBar>
 
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr>
-                {[
-                  "Truck ID",
-                  "Aggregator",
-                  "Route",
-                  "Temp",
-                  "Humidity",
-                  "Gas",
-                  "Vibration",
-                  "Crates",
-                  "Status",
-                  "",
-                ].map((h) => (
-                  <th key={h} className="table-th">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t, i) => (
-                <tr
-                  key={t.id}
-                  className={i % 2 === 0 ? "table-tr-even" : "table-tr-odd"}
-                >
-                  <td className="table-td font-mono font-bold text-deep text-xs">
-                    {t.id}
-                  </td>
-                  <td className="table-td">{t.aggregator}</td>
-                  <td className="table-td text-xs text-gray-500">{t.route}</td>
-                  <td className="table-td">
-                    <SensorVal
-                      value={t.sensors.temp}
-                      unit="°C"
-                      warn={28}
-                      danger={34}
-                    />
-                  </td>
-                  <td className="table-td">
-                    <SensorVal
-                      value={t.sensors.humidity}
-                      unit="%"
-                      warn={65}
-                      danger={70}
-                    />
-                  </td>
-                  <td className="table-td">
-                    <SensorVal
-                      value={t.sensors.gas}
-                      unit=" ppm"
-                      warn={400}
-                      danger={500}
-                    />
-                  </td>
-                  <td className="table-td">
-                    <SensorVal
-                      value={t.sensors.vibration}
-                      unit="g"
-                      warn={2}
-                      danger={2.5}
-                    />
-                  </td>
-                  <td className="table-td">{t.crates}</td>
-                  <td className="table-td">
-                    <Badge status={t.status} />
-                  </td>
-                  <td className="table-td">
-                    <button
-                      onClick={() => setSelected(t)}
-                      className="text-teal text-xs font-semibold hover:underline"
-                    >
-                      Details →
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={10}
-                    className="text-center py-10 text-gray-400 text-sm"
-                  >
-                    No trucks match your search
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {loading ? (
+        <div className="card p-8 text-center text-gray-500">
+          Loading trucks...
         </div>
-      </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr>
+                  {[
+                    "Truck ID",
+                    "Aggregator",
+                    "Route",
+                    "Temp",
+                    "Humidity",
+                    "Gas",
+                    "Vibration",
+                    "Crates",
+                    "Status",
+                    "",
+                  ].map((h) => (
+                    <th key={h} className="table-th">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((t, i) => (
+                  <tr
+                    key={t.id}
+                    className={i % 2 === 0 ? "table-tr-even" : "table-tr-odd"}
+                  >
+                    <td className="table-td font-mono font-bold text-deep text-xs">
+                      {t.id}
+                    </td>
+                    <td className="table-td">{t.aggregator}</td>
+                    <td className="table-td text-xs text-gray-500">
+                      {t.route}
+                    </td>
+                    <td className="table-td">
+                      <SensorVal
+                        value={t.sensors.temp}
+                        unit="°C"
+                        warn={28}
+                        danger={34}
+                      />
+                    </td>
+                    <td className="table-td">
+                      <SensorVal
+                        value={t.sensors.humidity}
+                        unit="%"
+                        warn={65}
+                        danger={70}
+                      />
+                    </td>
+                    <td className="table-td">
+                      <SensorVal
+                        value={t.sensors.gas}
+                        unit=" ppm"
+                        warn={400}
+                        danger={500}
+                      />
+                    </td>
+                    <td className="table-td">
+                      <SensorVal
+                        value={t.sensors.vibration}
+                        unit="g"
+                        warn={2}
+                        danger={2.5}
+                      />
+                    </td>
+                    <td className="table-td">{t.crates}</td>
+                    <td className="table-td">
+                      <Badge status={t.status} />
+                    </td>
+                    <td className="table-td">
+                      <button
+                        onClick={() => setSelected(t)}
+                        className="text-teal text-xs font-semibold hover:underline"
+                      >
+                        Details →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="text-center py-10 text-gray-400 text-sm"
+                    >
+                      No trucks match your search
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid sm:grid-cols-3 gap-4">
         {[

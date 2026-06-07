@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export function PageMeta({ title, description, url, image }) {
   useEffect(() => {
@@ -82,16 +84,28 @@ export function Navbar() {
               </Link>
             ))}
             <Link
-              to="/dashboard"
+              to="/auth"
               className="bg-teal text-white px-4 py-2 rounded-lg hover:bg-teal-dark transition-colors font-semibold"
             >
-              Dashboard
+              Login / Sign Up
             </Link>
+
+
+
+
+
+
           </div>
-          <button onClick={() => setOpen(!open)} className="md:hidden p-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="w-5 h-0.5 bg-white mb-1" />
-            ))}
+
+
+
+
+          <button
+            onClick={() => setOpen(!open)}
+            className="md:hidden p-2"
+            aria-label={open ? "Close menu" : "Open menu"}
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
         {open && (
@@ -102,11 +116,14 @@ export function Navbar() {
               </Link>
             ))}
             <Link
-              to="/dashboard"
+              to="/auth"
               className="bg-teal text-white px-4 py-2 rounded-lg text-center"
             >
-              Dashboard
+              Login / Sign Up
             </Link>
+
+
+
           </div>
         )}
       </div>
@@ -288,14 +305,31 @@ export function StatCard({ label, value, sub, icon }) {
 }
 
 export function DashboardLayout({ children, active, title }) {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar active={active} />
       <main className="flex-1 overflow-auto">
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {title && (
-            <h1 className="text-3xl font-bold text-deep mb-6">{title}</h1>
-          )}
+          <div className="flex items-start justify-between gap-4 mb-6">
+            <div>
+              {title && <h1 className="text-3xl font-bold text-deep">{title}</h1>}
+              {user?.email && (
+                <div className="text-xs text-gray-500 mt-1">Signed in as {user.email}</div>
+              )}
+            </div>
+            <button
+              onClick={async () => {
+                await logout();
+                navigate("/auth", { replace: true });
+              }}
+              className="px-4 py-2 rounded-lg bg-deep text-white text-sm font-semibold hover:bg-teal transition-colors"
+            >
+              Logout
+            </button>
+          </div>
           {children}
         </div>
       </main>

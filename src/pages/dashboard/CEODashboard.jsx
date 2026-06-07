@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -14,31 +14,117 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { DashboardLayout, DemoBanner, StatCard, Badge } from "@components";
-import { kpis, activity, trucks } from "../../data/index.js";
-
+import {
+  fetchDashboardSummary,
+  fetchTrucks,
+  fetchActivity,
+} from "../../services/api";
 const COLORS = ["#1D9E75", "#085041", "#D85A30", "#17835f"];
 
+const pickMetric = (source, keys, fallback = 0) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return fallback;
+};
+
 export default function CEODashboard() {
+  const [summary, setSummary] = useState(null);
+  const [kpis, setKpis] = useState(null);
+  const [activity, setActivity] = useState([]);
+  const [trucks, setTrucks] = useState([]);
+
+  useEffect(() => {
+    fetchDashboardSummary()
+      .then((data) => {
+        console.log("[CEODashboard] dashboard summary:", data);
+        console.log("[CEODashboard] dashboard kpis:", data?.dashboard_kpis);
+        console.log(
+          "[CEODashboard] dashboard metrics:",
+          data?.dashboard_metrics,
+        );
+        setSummary(data || null);
+        setKpis(
+          data?.dashboard_kpis || data?.dashboard_metrics || data || null,
+        );
+      })
+      .catch((error) => {
+        console.error("[CEODashboard] summary error:", error);
+        setSummary(null);
+        setKpis(null);
+      });
+    fetchActivity()
+      .then((data) => {
+        const items = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.activity)
+            ? data.activity
+            : [];
+        setActivity(items);
+      })
+      .catch((error) => {
+        console.error("[CEODashboard] activity error:", error);
+        setActivity([]);
+      });
+    fetchTrucks()
+      .then((data) => {
+        console.log("[CEODashboard] trucks:", data);
+        setTrucks(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        console.error("[CEODashboard] trucks error:", error);
+        setTrucks([]);
+      });
+  }, []);
+
+  console.log("[CEODashboard] resolved kpis:", kpis);
+  console.log("[CEODashboard] resolved summary:", summary);
+
   return (
     <DashboardLayout active="/dashboard" title="CEO / Board Dashboard">
       <DemoBanner />
 
+      {summary?.generated_at && (
+        <div className="mb-4 text-xs text-gray-500">
+          Summary generated at {new Date(summary.generated_at).toLocaleString()}
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-        <StatCard label="Total Crates Coated" value="12,400" icon="📦" />
-        <StatCard label="Active Aggregators" value="3" icon="🏢" />
-        <StatCard label="Active IoT Trucks" value="5" icon="🚛" />
-        <StatCard label="Batches This Month" value="4" icon="⚙️" />
+        <StatCard
+          label="Total Crates Coated"
+          value={Number(
+            pickMetric(kpis, ["total_crates", "total_crates_coated"]),
+          ).toLocaleString()}
+          icon="📦"
+        />
+        <StatCard
+          label="Active Aggregators"
+          value={pickMetric(kpis, ["active_aggregators"])}
+          icon="🏢"
+        />
+        <StatCard
+          label="Active IoT Trucks"
+          value={pickMetric(kpis, ["active_trucks", "active_iot_trucks"])}
+          icon="🚛"
+        />
+        <StatCard
+          label="Batches This Month"
+          value={pickMetric(kpis, ["batches_month", "batches_this_month"])}
+          icon="⚙️"
+        />
         <StatCard
           label="Avg Spoilage (coated)"
-          value="8.3%"
-          sub="vs 43% uncoated"
+          value={`${pickMetric(kpis, ["avg_spoilage_coated", "avg_spoilage_rate_coated"])}%`}
+          sub={`vs ${pickMetric(kpis, ["avg_spoilage_uncoated"])}% uncoated`}
           icon="📉"
         />
         <StatCard
           label="Revenue to Date"
-          value="₦5.2M"
-          sub="Demo figure"
+          value={`₦${Number(pickMetric(kpis, ["revenue_to_date", "revenue"])).toLocaleString()}`}
+          sub="From dashboard summary"
           icon="💰"
         />
       </div>
@@ -49,7 +135,7 @@ export default function CEODashboard() {
           <div className="card-header">Crates Coated per Month</div>
           <div className="p-4 h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={kpis.crates_by_month}>
+              <BarChart data={pickMetric(kpis, ["crates_by_month"], [])}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
@@ -65,7 +151,7 @@ export default function CEODashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={kpis.crates_by_aggregator}
+                  data={pickMetric(kpis, ["crates_by_aggregator"], [])}
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
@@ -77,9 +163,11 @@ export default function CEODashboard() {
                   labelLine={false}
                   fontSize={10}
                 >
-                  {kpis.crates_by_aggregator.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i]} />
-                  ))}
+                  {(pickMetric(kpis, ["crates_by_aggregator"], []) || []).map(
+                    (_, i) => (
+                      <Cell key={i} fill={COLORS[i]} />
+                    ),
+                  )}
                 </Pie>
                 <Tooltip />
               </PieChart>
@@ -93,7 +181,11 @@ export default function CEODashboard() {
         <div className="card-header">Bio-Shield Formulation Progress</div>
         <div className="p-4 h-48">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={kpis.spoilage_trend.filter((d) => d.days)}>
+            <LineChart
+              data={(pickMetric(kpis, ["spoilage_trend"], []) || []).filter(
+                (d) => d.days,
+              )}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
               <XAxis dataKey="version" tick={{ fontSize: 11 }} />
               <YAxis
