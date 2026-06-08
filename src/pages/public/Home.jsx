@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Navbar, Footer, PageMeta } from "../../components";
 import content from "../../content";
 
@@ -44,12 +45,12 @@ export default function Home() {
             {content.home.hero.sub}
           </p>
           <div className="flex flex-wrap gap-4">
-            <a href="/#/dashboard" className="btn-primary text-base">
+            <Link to="/dashboard" className="btn-primary text-base">
               {content.home.hero.ctaPrimary}
-            </a>
-            <a href="/#/product" className="btn-white text-base">
+            </Link>
+            <Link to="/product" className="btn-white text-base">
               {content.home.hero.ctaSecondary}
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -123,12 +124,12 @@ export default function Home() {
                 Built by builders
               </h2>
             </div>
-            <a
-              href="/#/team"
+            <Link
+              to="/team"
               className="text-teal font-semibold text-sm hover:underline"
             >
               Meet everyone →
-            </a>
+            </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {content.home.teamPreview.map((m) => (
@@ -158,9 +159,9 @@ export default function Home() {
               See the Bio-Shield coating operation, IoT monitoring, R&D trials,
               and data analysis — all in one dashboard.
             </p>
-            <a href="/#/dashboard" className="btn-primary">
+            <Link to="/dashboard" className="btn-primary">
               Open Dashboard →
-            </a>
+            </Link>
           </div>
           <div>
             <h2 className="text-3xl font-bold mb-4">Get in touch</h2>
@@ -168,9 +169,9 @@ export default function Home() {
               Investment enquiries, grant partnerships, or pilot partnerships —
               we'd like to hear from you.
             </p>
-            <a href="/#/contact" className="btn-white">
+            <Link to="/contact" className="btn-white">
               Contact Us →
-            </a>
+            </Link>
           </div>
         </div>
       </section>

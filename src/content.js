@@ -218,7 +218,7 @@ export const contact = {
         subtitle: "Investment enquiries, grant partnerships, pilot partnerships — we'd like to hear from you.",
     },
     details: [
-        { icon: "📧", label: "Email", value: "hello@tazemi.com" },
+        { icon: "📧", label: "Email", value: "ojoqamorudeen88@gmail.com" },
         { icon: "🌐", label: "Website", value: "tazemi.com" },
         { icon: "📱", label: "Social", value: "@tazemi" },
         { icon: "📍", label: "Location", value: "FUTMinna, Niger State, Nigeria" },

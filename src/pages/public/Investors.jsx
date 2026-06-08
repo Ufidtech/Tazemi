@@ -35,7 +35,7 @@ export default function Investors() {
                   {resource.description}
                 </p>
                 <a
-                  href="mailto:hello@tazemi.com"
+                  href="mailto:ojoqamorudeen88@gmail.com"
                   className="btn-secondary text-sm"
                 >
                   Request: {resource.action}

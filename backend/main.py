@@ -18,9 +18,11 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "https://ufidtech.github.io",
-        "https://ufidtech.github.io/Tazemi/",
+                "https://ufidtech.github.io/Tazemi",
+
     ],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1):(\d+)|https://([a-zA-Z0-9-]+\.)*github\.io",
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):(\d+)$|^https://([a-zA-Z0-9-]+\.)*github\.io$",
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
