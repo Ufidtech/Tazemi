@@ -13,12 +13,12 @@ export default function Team() {
         url={content.meta.team.url}
       />
       <Navbar />
-      <section className="bg-deep text-white py-20 px-6">
+      <section className="bg-deep text-white py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="section-label text-teal">
             {content.teamContent.hero.label}
           </div>
-          <h1 className="text-4xl font-black mb-4">
+          <h1 className="text-3xl sm:text-4xl font-black mb-4">
             {content.teamContent.hero.title}
           </h1>
           <p className="text-white/70 text-lg">
@@ -26,9 +26,9 @@ export default function Team() {
           </p>
         </div>
       </section>
-      <section className="py-20 px-6 bg-white">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-4xl mx-auto">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {team.map((m) => (
               <div key={m.name} className="card p-6 flex items-start gap-4">
                 <div
