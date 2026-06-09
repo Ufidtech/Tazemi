@@ -149,7 +149,7 @@ export function Footer() {
         <div>
           <div className="font-semibold mb-3">Contact</div>
           <div className="text-sm text-white/70 flex flex-col gap-1">
-            <span>hello@tazemi.com</span>
+            <span>ojoqamorudeen88@gmail.com</span>
             <span>tazemi.com</span>
             <span>@tazemi</span>
             <span>Nigeria</span>
