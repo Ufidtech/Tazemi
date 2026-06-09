@@ -92,7 +92,7 @@ export default function CEODashboard() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         <StatCard
           label="Total Crates Coated"
           value={Number(
@@ -130,24 +130,26 @@ export default function CEODashboard() {
       </div>
 
       {/* Charts row */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-        <div className="card md:col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="card md:col-span-2 mobile-card-tight">
           <div className="card-header">Crates Coated per Month</div>
-          <div className="p-4 h-52">
+          <div className="p-2.5 sm:p-4 h-44 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pickMetric(kpis, ["crates_by_month"], [])}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <XAxis dataKey="month" tick={{ fontSize: 9 }} />
+                <YAxis tick={{ fontSize: 9 }} />
+
+                <Tooltip wrapperStyle={{ fontSize: 11 }} />
+
                 <Bar dataKey="crates" fill="#1D9E75" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="card">
+        <div className="card mobile-card-tight">
           <div className="card-header">Crates by Aggregator</div>
-          <div className="p-4 h-52">
+          <div className="p-2.5 sm:p-4 h-44 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -160,8 +162,9 @@ export default function CEODashboard() {
                   label={({ name, percent }) =>
                     `${name.split(" ")[0]} ${(percent * 100).toFixed(0)}%`
                   }
+                  labelStyle={{ fontSize: 8 }}
                   labelLine={false}
-                  fontSize={10}
+                  fontSize={9}
                 >
                   {(pickMetric(kpis, ["crates_by_aggregator"], []) || []).map(
                     (_, i) => (
@@ -177,9 +180,9 @@ export default function CEODashboard() {
       </div>
 
       {/* Bio-Shield progress */}
-      <div className="card mb-8">
+      <div className="card mb-8 mobile-card-tight">
         <div className="card-header">Bio-Shield Formulation Progress</div>
-        <div className="p-4 h-48">
+        <div className="p-3 sm:p-4 h-44 sm:h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={(pickMetric(kpis, ["spoilage_trend"], []) || []).filter(
@@ -187,10 +190,10 @@ export default function CEODashboard() {
               )}
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="version" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="version" tick={{ fontSize: 8 }} />
               <YAxis
                 domain={[0, 25]}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 8 }}
                 label={{
                   value: "Days",
                   angle: -90,
@@ -210,7 +213,7 @@ export default function CEODashboard() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="px-4 pb-4 flex gap-4 text-xs text-gray-500">
+        <div className="px-3 sm:px-4 pb-3 sm:pb-4 flex flex-col sm:flex-row flex-wrap gap-1.5 sm:gap-4 text-xs text-gray-500">
           <span className="flex items-center gap-1">
             <span className="w-3 h-0.5 bg-teal inline-block" />
             Shelf life achieved
@@ -220,12 +223,15 @@ export default function CEODashboard() {
       </div>
 
       {/* Two columns: Activity + Alerts */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="card">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card mobile-card-tight">
           <div className="card-header">Recent Activity</div>
           <div className="divide-y divide-gray-100">
             {activity.map((ev) => (
-              <div key={ev.id} className="px-4 py-3 flex items-start gap-3">
+              <div
+                key={ev.id}
+                className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-start gap-2.5 sm:gap-3"
+              >
                 <span className="text-lg mt-0.5">
                   {ev.type === "alert"
                     ? "🔴"
@@ -252,7 +258,7 @@ export default function CEODashboard() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card mobile-card-tight">
           <div className="card-header">Active Alerts</div>
           {trucks
             .filter((t) => t.status === "alert" || t.alerts.length > 0)
@@ -270,7 +276,7 @@ export default function CEODashboard() {
                   t.alerts.map((a, i) => (
                     <div
                       key={`${t.id}-${i}`}
-                      className="px-4 py-3 flex items-start gap-3"
+                      className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-start gap-2.5 sm:gap-3"
                     >
                       <span className="text-tomato text-lg">⚠️</span>
                       <div>
@@ -301,9 +307,9 @@ export default function CEODashboard() {
                 )}
             </div>
           )}
-          <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
+          <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-gray-100 bg-gray-50">
             <div className="section-label mb-3">Quick Links</div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
                 ["📡", "IoT Monitoring", "/#/dashboard/iot"],
                 ["⚙️", "Operations", "/#/dashboard/operations"],
@@ -313,7 +319,7 @@ export default function CEODashboard() {
                 <a
                   key={l}
                   href={h}
-                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-teal transition-colors py-1"
+                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-teal transition-colors py-1 min-w-0"
                 >
                   <span>{i}</span>
                   {l}

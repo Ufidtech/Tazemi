@@ -63,12 +63,12 @@ export default function Contact() {
         url={content.meta.contact.url}
       />
       <Navbar />
-      <section className="bg-deep text-white py-20 px-6">
+      <section className="bg-deep text-white py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="section-label text-teal">
             {content.contact.hero.label}
           </div>
-          <h1 className="text-4xl font-black mb-4">
+          <h1 className="text-3xl sm:text-4xl font-black mb-4">
             {content.contact.hero.title}
           </h1>
           <p className="text-white/70 text-lg">
@@ -76,8 +76,8 @@ export default function Contact() {
           </p>
         </div>
       </section>
-      <section className="py-20 px-6 bg-white">
-        <div className="max-w-4xl mx-auto grid md:grid-cols-3 gap-10">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10">
           <div>
             <div className="section-label">Contact Details</div>
             <div className="space-y-4 mt-4">
@@ -109,7 +109,7 @@ export default function Contact() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-deep block mb-1">
                       Name *

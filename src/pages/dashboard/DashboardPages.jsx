@@ -73,7 +73,7 @@ export function Operations() {
       </SearchBar>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {[
           ["📦", "Total Batches", batches.length],
           [
@@ -87,7 +87,7 @@ export function Operations() {
             `${(batches.reduce((s, b) => s + b.weight, 0) / 1000).toFixed(1)}t`,
           ],
         ].map(([i, l, v]) => (
-          <div key={l} className="bg-deep text-white rounded-xl p-4">
+          <div key={l} className="bg-deep text-white rounded-xl p-3.5 sm:p-4">
             <div className="text-xl mb-1">{i}</div>
             <div className="text-2xl font-black text-teal">{v}</div>
             <div className="text-white/60 text-xs mt-1">{l}</div>
@@ -97,7 +97,7 @@ export function Operations() {
 
       <div className="card overflow-hidden mb-6">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[1100px] sm:min-w-0">
             <thead>
               <tr>
                 {[
@@ -114,7 +114,7 @@ export function Operations() {
                   "Status",
                   "",
                 ].map((h) => (
-                  <th key={h} className="table-th">
+                  <th key={h} className="table-th-condensed sm:table-th">
                     {h}
                   </th>
                 ))}
@@ -126,44 +126,48 @@ export function Operations() {
                   key={b.id}
                   className={i % 2 === 0 ? "table-tr-even" : "table-tr-odd"}
                 >
-                  <td className="table-td font-mono text-xs font-bold text-deep">
+                  <td className="table-td-condensed sm:table-td font-mono text-[11px] sm:text-xs font-bold text-deep">
                     {b.id}
                   </td>
-                  <td className="table-td text-xs">{b.date}</td>
-                  <td className="table-td text-sm">{b.aggregator}</td>
-                  <td className="table-td">{b.crates}</td>
-                  <td className="table-td text-xs">
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
+                    {b.date}
+                  </td>
+                  <td className="table-td-condensed sm:table-td text-xs sm:text-sm">
+                    {b.aggregator}
+                  </td>
+                  <td className="table-td-condensed sm:table-td">{b.crates}</td>
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
                     {b.weight.toLocaleString()}kg
                   </td>
-                  <td className="table-td">
-                    <span className="bg-teal/10 text-teal text-xs font-semibold px-2 py-0.5 rounded-full">
+                  <td className="table-td-condensed sm:table-td">
+                    <span className="bg-teal/10 text-teal text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-full">
                       {b.formula}
                     </span>
                   </td>
-                  <td className="table-td text-xs">
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
                     {b.operator.split(" ")[0]} {b.operator.split(" ")[1]}
                   </td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">
                     <span
-                      className={`font-bold text-sm ${b.pre_grade === "A" ? "text-teal" : b.pre_grade === "B" ? "text-amber" : "text-tomato"}`}
+                      className={`font-bold text-xs sm:text-sm ${b.pre_grade === "A" ? "text-teal" : b.pre_grade === "B" ? "text-amber" : "text-tomato"}`}
                     >
                       {b.pre_grade}
                     </span>
                   </td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">
                     <span
-                      className={`font-bold text-sm ${b.post_grade === "A" ? "text-teal" : b.post_grade === "B" ? "text-amber" : "text-tomato"}`}
+                      className={`font-bold text-xs sm:text-sm ${b.post_grade === "A" ? "text-teal" : b.post_grade === "B" ? "text-amber" : "text-tomato"}`}
                     >
                       {b.post_grade}
                     </span>
                   </td>
-                  <td className="table-td text-xs font-mono">
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs font-mono">
                     {b.truck || "—"}
                   </td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">
                     <Badge status={b.status} />
                   </td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">
                     <button
                       onClick={() => setBatch(b)}
                       className="text-teal text-xs font-semibold hover:underline"
@@ -173,6 +177,7 @@ export function Operations() {
                   </td>
                 </tr>
               ))}
+
               {!filtered.length && (
                 <tr>
                   <td
@@ -191,7 +196,7 @@ export function Operations() {
       {selected && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center py-8 px-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl">
-            <div className="bg-deep text-white p-5 rounded-t-2xl flex justify-between items-center">
+            <div className="bg-deep text-white p-5 rounded-t-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div>
                 <div className="font-black text-teal text-lg">
                   {selected.id}
@@ -208,7 +213,7 @@ export function Operations() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 {[
                   ["Aggregator", selected.aggregator],
                   ["Location", selected.location],
@@ -299,7 +304,7 @@ export function Aggregators() {
         </div>
       </SearchBar>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
         {filtered.map((a) => (
           <div
             key={a.id}
@@ -341,7 +346,7 @@ export function Aggregators() {
       {selected && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center py-8 px-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl">
-            <div className="bg-deep text-white p-5 rounded-t-2xl flex justify-between items-center">
+            <div className="bg-deep text-white p-5 rounded-t-2xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
               <div>
                 <div className="font-black text-teal text-xl">
                   {selected.name}
@@ -358,7 +363,7 @@ export function Aggregators() {
               </button>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {[
                   [selected.batches, "Total Batches"],
                   [selected.crates.toLocaleString(), "Total Crates"],
@@ -374,7 +379,7 @@ export function Aggregators() {
                   </div>
                 ))}
               </div>
-              <div className="grid sm:grid-cols-2 gap-4 mb-6 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
                 {[
                   ["Contact", selected.contact],
                   ["Status", selected.status],
@@ -391,12 +396,15 @@ export function Aggregators() {
                 Batch History
               </div>
               <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs min-w-[640px] sm:min-w-0">
                   <thead>
                     <tr>
                       {["Batch ID", "Date", "Crates", "Formula", "Status"].map(
                         (h) => (
-                          <th key={h} className="table-th">
+                          <th
+                            key={h}
+                            className="table-th-condensed sm:table-th"
+                          >
                             {h}
                           </th>
                         ),
@@ -409,11 +417,19 @@ export function Aggregators() {
                         key={b.id}
                         className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
                       >
-                        <td className="table-td font-mono text-xs">{b.id}</td>
-                        <td className="table-td">{b.date}</td>
-                        <td className="table-td">{b.crates}</td>
-                        <td className="table-td">{b.formula}</td>
-                        <td className="table-td">
+                        <td className="table-td-condensed sm:table-td font-mono text-[11px] sm:text-xs">
+                          {b.id}
+                        </td>
+                        <td className="table-td-condensed sm:table-td">
+                          {b.date}
+                        </td>
+                        <td className="table-td-condensed sm:table-td">
+                          {b.crates}
+                        </td>
+                        <td className="table-td-condensed sm:table-td">
+                          {b.formula}
+                        </td>
+                        <td className="table-td-condensed sm:table-td">
                           <Badge status={b.status} />
                         </td>
                       </tr>
@@ -421,6 +437,7 @@ export function Aggregators() {
                   </tbody>
                 </table>
               </div>
+
               {selected.notes && (
                 <div className="mt-4 bg-mist rounded-lg p-4 text-sm text-gray-700">
                   <strong>Notes: </strong>
@@ -470,7 +487,7 @@ export function RnD() {
       <DemoBanner />
 
       {/* Formula version cards */}
-      <div className="grid sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 mb-8">
         {[
           { v: "BS-v1.0", days: 8, status: "Superseded" },
           { v: "BS-v1.2", days: 17, status: "Active — Commercial Pilot" },
@@ -478,7 +495,7 @@ export function RnD() {
         ].map((f) => (
           <div
             key={f.v}
-            className={`card p-5 border-l-4 ${f.status.includes("Active") ? "border-teal" : f.status.includes("Testing") ? "border-amber" : "border-gray-300"}`}
+            className={`card p-4 sm:p-5 border-l-4 ${f.status.includes("Active") ? "border-teal" : f.status.includes("Testing") ? "border-amber" : "border-gray-300"}`}
           >
             <div className="font-black text-deep text-xl mb-1">{f.v}</div>
             <div
@@ -504,16 +521,17 @@ export function RnD() {
       </div>
 
       {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="card">
           <div className="card-header">Shelf Life by Formula Version</div>
-          <div className="p-4 h-52">
+          <div className="p-3.5 sm:p-4 h-44 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="version" tick={{ fontSize: 10 }} />
-                <YAxis domain={[0, 25]} tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <XAxis dataKey="version" tick={{ fontSize: 9 }} />
+                <YAxis domain={[0, 25]} tick={{ fontSize: 9 }} />
+                <Tooltip wrapperStyle={{ fontSize: 11 }} />
+
                 <ReferenceLine
                   y={15}
                   stroke="#B45309"
@@ -546,27 +564,31 @@ export function RnD() {
         </div>
         <div className="card">
           <div className="card-header">AV Concentration vs Shelf Life</div>
-          <div className="p-4 h-52">
+          <div className="p-3.5 sm:p-4 h-44 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                 <XAxis
                   dataKey="conc"
                   name="AV Conc (%)"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
                   label={{
                     value: "AV gel %",
                     position: "insideBottom",
                     offset: -5,
-                    fontSize: 10,
+                    fontSize: 9,
                   }}
                 />
                 <YAxis
                   dataKey="days"
                   name="Shelf life"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
                 />
-                <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  wrapperStyle={{ fontSize: 11 }}
+                />
+
                 <ReferenceLine y={15} stroke="#B45309" strokeDasharray="4 2" />
                 <Scatter data={chartData} fill="#1D9E75" r={6} />
               </ScatterChart>
@@ -601,7 +623,7 @@ export function RnD() {
       <div className="card overflow-hidden">
         <div className="card-header">Trial Log</div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[860px] sm:min-w-0">
             <thead>
               <tr>
                 {[
@@ -617,7 +639,7 @@ export function RnD() {
                   "Lead",
                   "Status",
                 ].map((h) => (
-                  <th key={h} className="table-th">
+                  <th key={h} className="table-th-condensed sm:table-th">
                     {h}
                   </th>
                 ))}
@@ -629,35 +651,48 @@ export function RnD() {
                   key={t.id}
                   className={i % 2 === 0 ? "table-tr-even" : "table-tr-odd"}
                 >
-                  <td className="table-td font-mono text-xs font-bold text-deep">
+                  <td className="table-td-condensed sm:table-td font-mono text-[11px] sm:text-xs font-bold text-deep">
                     {t.id}
                   </td>
-                  <td className="table-td">
-                    <span className="bg-teal/10 text-teal text-xs font-semibold px-2 py-0.5 rounded-full">
+                  <td className="table-td-condensed sm:table-td">
+                    <span className="bg-teal/10 text-teal text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-full">
                       {t.formula}
                     </span>
                   </td>
-                  <td className="table-td text-xs">{t.date}</td>
-                  <td className="table-td text-xs">{t.av_conc}%</td>
-                  <td className="table-td text-xs">{t.starch_conc}%</td>
-                  <td className="table-td text-xs">{t.app_vol} mL/kg</td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
+                    {t.date}
+                  </td>
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
+                    {t.av_conc}%
+                  </td>
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
+                    {t.starch_conc}%
+                  </td>
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
+                    {t.app_vol} mL/kg
+                  </td>
+                  <td className="table-td-condensed sm:table-td">
                     <span
                       className={`font-bold ${t.shelf_days >= 15 ? "text-teal" : t.shelf_days ? "text-amber-600" : "text-gray-400"}`}
                     >
                       {t.shelf_days ? `${t.shelf_days} days` : "Ongoing"}
                     </span>
                   </td>
-                  <td className="table-td text-xs">
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
                     {t.weight_loss ? `${t.weight_loss}%` : "—"}
                   </td>
-                  <td className="table-td text-xs">{t.visual_day7 || "—"}</td>
-                  <td className="table-td text-xs">{t.lead.split(" ")[0]}</td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
+                    {t.visual_day7 || "—"}
+                  </td>
+                  <td className="table-td-condensed sm:table-td text-[11px] sm:text-xs">
+                    {t.lead.split(" ")[0]}
+                  </td>
+                  <td className="table-td-condensed sm:table-td">
                     <Badge status={t.status} />
                   </td>
                 </tr>
               ))}
+
               {!filtered.length && (
                 <tr>
                   <td
@@ -839,7 +874,7 @@ export function TruckAnalysis() {
       <div className="card mb-8">
         <div className="card-header">Route-Level Analysis</div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[760px] sm:min-w-0">
             <thead>
               <tr>
                 {[
@@ -851,7 +886,7 @@ export function TruckAnalysis() {
                   "Trips",
                   "Status",
                 ].map((h) => (
-                  <th key={h} className="table-th">
+                  <th key={h} className="table-th-condensed sm:table-th">
                     {h}
                   </th>
                 ))}
@@ -863,10 +898,10 @@ export function TruckAnalysis() {
                   key={r.route}
                   className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
                 >
-                  <td className="table-td font-semibold text-deep">
+                  <td className="table-td-condensed sm:table-td font-semibold text-deep">
                     {r.route}
                   </td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">
                     <span
                       className={
                         r.avg_temp > 32 ? "text-tomato font-bold" : "text-teal"
@@ -875,7 +910,7 @@ export function TruckAnalysis() {
                       {r.avg_temp}°C
                     </span>
                   </td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">
                     <span
                       className={
                         r.avg_humidity > 68
@@ -886,8 +921,10 @@ export function TruckAnalysis() {
                       {r.avg_humidity}%
                     </span>
                   </td>
-                  <td className="table-td">{r.avg_duration}h</td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">
+                    {r.avg_duration}h
+                  </td>
+                  <td className="table-td-condensed sm:table-td">
                     <span
                       className={
                         r.spoilage_rate > 15
@@ -898,8 +935,8 @@ export function TruckAnalysis() {
                       {r.spoilage_rate}%
                     </span>
                   </td>
-                  <td className="table-td">{r.trips}</td>
-                  <td className="table-td">
+                  <td className="table-td-condensed sm:table-td">{r.trips}</td>
+                  <td className="table-td-condensed sm:table-td">
                     <span
                       className={
                         r.spoilage_rate > 15
@@ -918,36 +955,40 @@ export function TruckAnalysis() {
       </div>
 
       {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="card">
           <div className="card-header">Temperature vs Spoilage Rate</div>
-          <div className="p-4 h-52">
+          <div className="p-3.5 sm:p-4 h-44 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                 <XAxis
                   dataKey="temp"
                   name="Peak Temp (°C)"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
                   label={{
                     value: "Peak Temp °C",
                     position: "insideBottom",
                     offset: -3,
-                    fontSize: 10,
+                    fontSize: 9,
                   }}
                 />
                 <YAxis
                   dataKey="spoilage"
                   name="Spoilage %"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
                   label={{
                     value: "Spoilage %",
                     angle: -90,
                     position: "insideLeft",
-                    fontSize: 10,
+                    fontSize: 9,
                   }}
                 />
-                <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  wrapperStyle={{ fontSize: 11 }}
+                />
+
                 <Scatter
                   data={correlationData}
                   fill="#D85A30"
@@ -960,27 +1001,31 @@ export function TruckAnalysis() {
         </div>
         <div className="card">
           <div className="card-header">Humidity vs Spoilage Rate</div>
-          <div className="p-4 h-52">
+          <div className="p-3.5 sm:p-4 h-44 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                 <XAxis
                   dataKey="humidity"
                   name="Peak Humidity %"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
                   label={{
                     value: "Peak Humidity %",
                     position: "insideBottom",
                     offset: -3,
-                    fontSize: 10,
+                    fontSize: 9,
                   }}
                 />
                 <YAxis
                   dataKey="spoilage"
                   name="Spoilage %"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 9 }}
                 />
-                <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  wrapperStyle={{ fontSize: 11 }}
+                />
+
                 <Scatter
                   data={correlationData}
                   fill="#085041"
@@ -999,14 +1044,14 @@ export function TruckAnalysis() {
         onChange={setSearch}
         placeholder="Select a truck to drill into its journey data..."
       />
-      <div className="grid sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         {filtered.map((t) => (
           <button
             key={t.id}
             onClick={() =>
               setSelectedTruck(selectedTruck?.id === t.id ? null : t)
             }
-            className={`card p-4 text-left transition-colors ${selectedTruck?.id === t.id ? "border-teal border-2" : ""}`}
+            className={`card p-3.5 sm:p-4 text-left transition-colors ${selectedTruck?.id === t.id ? "border-teal border-2" : ""}`}
           >
             <div className="font-bold text-deep text-sm">{t.id}</div>
             <div className="text-xs text-gray-400">{t.aggregator}</div>
@@ -1025,9 +1070,10 @@ export function TruckAnalysis() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={selectedTruck.history}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="t" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <XAxis dataKey="t" tick={{ fontSize: 9 }} />
+                <YAxis tick={{ fontSize: 9 }} />
+                <Tooltip wrapperStyle={{ fontSize: 11 }} />
+
                 <ReferenceLine
                   y={34}
                   stroke="#D85A30"
@@ -1071,7 +1117,7 @@ export function TruckAnalysis() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="px-5 pb-5 text-xs text-gray-500 flex gap-4">
+          <div className="px-4 sm:px-5 pb-4 sm:pb-5 text-xs text-gray-500 flex flex-col sm:flex-row flex-wrap gap-1.5 sm:gap-4">
             <span className="flex items-center gap-1">
               <span className="w-3 h-0.5 bg-tomato inline-block" />
               Temperature °C
