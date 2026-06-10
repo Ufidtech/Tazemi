@@ -30,7 +30,7 @@ function TruckDetail({ truck, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
       <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl">
-        <div className="bg-deep text-white p-5 rounded-t-2xl flex items-center justify-between">
+        <div className="bg-deep text-white p-4 sm:p-5 rounded-t-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3">
           <div>
             <div className="font-black text-lg text-teal">{truck.id}</div>
             <div className="text-white/70 text-sm">
@@ -39,20 +39,23 @@ function TruckDetail({ truck, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="text-white/60 hover:text-white text-2xl"
+            className="self-start sm:self-auto text-white/60 hover:text-white text-2xl"
           >
             ✕
           </button>
         </div>
-        <div className="p-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="p-3.5 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
             {[
               ["Crates", truck.crates, "📦"],
               ["Formula", truck.formula, "🧪"],
               ["Batch", truck.batch_id, "⚙️"],
               ["Departure", truck.departure.split(" ")[0], "📅"],
             ].map(([l, v, i]) => (
-              <div key={l} className="bg-mist rounded-lg p-3 text-center">
+              <div
+                key={l}
+                className="bg-mist rounded-lg p-2.5 sm:p-3 text-center"
+              >
                 <div className="text-xl mb-1">{i}</div>
                 <div className="font-bold text-deep text-sm">{v}</div>
                 <div className="text-xs text-gray-500">{l}</div>
@@ -81,9 +84,9 @@ function TruckDetail({ truck, onClose }) {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={truck.history}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                  <XAxis dataKey="t" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                  <XAxis dataKey="t" tick={{ fontSize: 9 }} />
+                  <YAxis tick={{ fontSize: 9 }} />
+                  <Tooltip wrapperStyle={{ fontSize: 11 }} />
                   <Line
                     type="monotone"
                     dataKey="temp"
@@ -105,7 +108,7 @@ function TruckDetail({ truck, onClose }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
             {[
               ["🌡️", "Current Temp", `${truck.sensors.temp}°C`],
               ["💧", "Humidity", `${truck.sensors.humidity}%`],
@@ -142,13 +145,9 @@ export default function IoTMonitoring() {
     let mounted = true;
     getTrucks()
       .then((data) => {
-
-        console.log("[IoTMonitoring] trucks response:", data);
         const normalized = Array.isArray(data) ? data : [];
-        console.log("[IoTMonitoring] normalized trucks:", normalized);
         if (mounted) setTrucks(normalized);
       })
-
       .catch((error) => {
         console.error("[IoTMonitoring] failed to load trucks:", error);
         if (mounted) setTrucks([]);
@@ -177,14 +176,6 @@ export default function IoTMonitoring() {
       }),
     [trucks, search, filter],
   );
-
-  console.log("[IoTMonitoring] render state:", {
-    loading,
-    truckCount: trucks.length,
-    filteredCount: filtered.length,
-    filter,
-    search,
-  });
 
   return (
     <DashboardLayout active="/dashboard/iot" title="IoT Monitoring">
@@ -316,7 +307,7 @@ export default function IoTMonitoring() {
         </div>
       )}
 
-      <div className="mt-6 grid sm:grid-cols-3 gap-4">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {[
           [
             "🟢",
@@ -336,7 +327,7 @@ export default function IoTMonitoring() {
         ].map(([i, l, n]) => (
           <div
             key={l}
-            className="bg-white rounded-lg border border-gray-200 p-4 flex items-center gap-3"
+            className="bg-white rounded-lg border border-gray-200 p-3.5 sm:p-4 flex items-center gap-2.5 sm:gap-3"
           >
             <span className="text-2xl">{i}</span>
             <div>

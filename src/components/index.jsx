@@ -173,19 +173,19 @@ export function Sidebar({ active }) {
     ["📈", "Truck Data Analysis", "/dashboard/analysis"],
   ];
   return (
-    <aside className="w-64 bg-deep text-white min-h-screen flex flex-col shrink-0">
-      <div className="px-5 py-5 border-b border-white/10">
+    <aside className="w-full md:w-64 bg-deep text-white md:min-h-screen flex flex-col shrink-0">
+      <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between md:justify-start">
         <Link to="/" className="flex items-center gap-2">
           <span className="text-teal font-black text-lg">TAZÉMI</span>
           <span className="text-white/60 text-xs">DASHBOARD</span>
         </Link>
       </div>
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+      <nav className="flex-1 px-3 py-4 flex flex-row md:flex-col gap-2 md:gap-1 overflow-x-auto md:overflow-visible">
         {links.map(([icon, label, href]) => (
           <Link
             key={href}
             to={href}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 md:gap-3 px-3 py-2.5 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap ${
               active === href
                 ? "bg-teal text-white"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
@@ -196,7 +196,7 @@ export function Sidebar({ active }) {
           </Link>
         ))}
       </nav>
-      <div className="px-5 py-4 border-t border-white/10">
+      <div className="px-5 py-4 border-t border-white/10 hidden md:block">
         <Link
           to="/"
           className="text-white/50 hover:text-teal text-xs transition-colors"
@@ -230,7 +230,7 @@ export function SearchBar({
   children,
 }) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 mb-6">
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-5 sm:mb-6">
       <div className="relative flex-1">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
           🔍
@@ -240,12 +240,12 @@ export function SearchBar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-lg pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+          className="w-full border border-gray-200 rounded-lg pl-9 pr-8 py-2 sm:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
         />
         {value && (
           <button
             onClick={() => onChange("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             ✕
           </button>
@@ -282,11 +282,13 @@ export function Badge({ status }) {
 
 export function StatCard({ label, value, sub, icon }) {
   return (
-    <div className="bg-deep text-white rounded-xl p-5">
-      {icon && <div className="text-2xl mb-2">{icon}</div>}
-      <div className="text-2xl sm:text-3xl font-bold text-teal">{value}</div>
-      <div className="text-sm font-medium mt-1">{label}</div>
-      {sub && <div className="text-xs text-white/60 mt-1">{sub}</div>}
+    <div className="bg-deep text-white rounded-xl p-4 sm:p-5">
+      {icon && <div className="text-xl sm:text-2xl mb-1.5 sm:mb-2">{icon}</div>}
+      <div className="text-xl sm:text-3xl font-bold text-teal">{value}</div>
+      <div className="text-sm font-medium mt-1 leading-snug">{label}</div>
+      {sub && (
+        <div className="text-xs text-white/60 mt-1 leading-snug">{sub}</div>
+      )}
     </div>
   );
 }
@@ -296,17 +298,19 @@ export function DashboardLayout({ children, active, title }) {
   const { user, logout } = useAuth();
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col md:flex-row bg-gray-50">
       <Sidebar active={active} />
       <main className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
             <div>
               {title && (
-                <h1 className="text-3xl font-bold text-deep">{title}</h1>
+                <h1 className="text-xl sm:text-3xl font-bold text-deep">
+                  {title}
+                </h1>
               )}
               {user?.email && (
-                <div className="text-xs text-gray-500 mt-1">
+                <div className="text-xs text-gray-500 mt-1 break-all leading-snug">
                   Signed in as {user.email}
                 </div>
               )}
@@ -316,7 +320,7 @@ export function DashboardLayout({ children, active, title }) {
                 await logout();
                 navigate("/auth", { replace: true });
               }}
-              className="px-4 py-2 rounded-lg bg-deep text-white text-sm font-semibold hover:bg-teal transition-colors"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-deep text-white text-sm font-semibold hover:bg-teal transition-colors"
             >
               Logout
             </button>
