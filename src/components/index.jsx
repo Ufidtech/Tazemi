@@ -61,6 +61,7 @@ export function Navbar() {
     ["Investors", "/investors"],
     ["Contact", "/contact"],
   ];
+
   return (
     <nav className="bg-deep text-white sticky top-0 z-50 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,6 +74,7 @@ export function Navbar() {
               AGRITECH
             </span>
           </Link>
+
           <div className="hidden md:flex items-center gap-6 text-sm font-medium">
             {links.map(([l, h]) => (
               <Link
@@ -83,13 +85,8 @@ export function Navbar() {
                 {l}
               </Link>
             ))}
-            <Link
-              to="/auth"
-              className="bg-teal text-white px-4 py-2 rounded-lg hover:bg-teal-dark transition-colors font-semibold"
-            >
-              Login / Sign Up
-            </Link>
           </div>
+
           <button
             onClick={() => setOpen(!open)}
             className="md:hidden p-2"
@@ -98,6 +95,7 @@ export function Navbar() {
             {open ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
+
         {open && (
           <div className="md:hidden pb-4 flex flex-col gap-3 text-sm">
             {links.map(([l, h]) => (
@@ -105,12 +103,6 @@ export function Navbar() {
                 {l}
               </Link>
             ))}
-            <Link
-              to="/auth"
-              className="bg-teal text-white px-4 py-2 rounded-lg text-center"
-            >
-              Login / Sign Up
-            </Link>
           </div>
         )}
       </div>

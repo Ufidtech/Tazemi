@@ -7,10 +7,10 @@ import React, {
 } from "react";
 import {
   clearAuth,
+  fetchRoles,
   getAuthUser,
   login,
   logout,
-  signup,
   subscribeToFirebaseAuth,
 } from "../services/auth";
 
@@ -30,8 +30,19 @@ export function AuthProvider({ children }) {
       }
     });
 
-    setRoles([]);
-    setLoading(false);
+    const loadRoles = async () => {
+      try {
+        const result = await fetchRoles();
+        const roleList = Array.isArray(result) ? result : result?.roles || [];
+        setRoles(roleList);
+      } catch {
+        setRoles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRoles();
 
     return () => unsubscribe?.();
   }, []);
@@ -39,13 +50,6 @@ export function AuthProvider({ children }) {
   const doLogin = async (payload) => {
     setError("");
     const nextUser = await login(payload);
-    setUser(nextUser);
-    return nextUser;
-  };
-
-  const doSignup = async (payload) => {
-    setError("");
-    const nextUser = await signup(payload);
     setUser(nextUser);
     return nextUser;
   };
@@ -67,7 +71,6 @@ export function AuthProvider({ children }) {
       error,
       setError,
       login: doLogin,
-      signup: doSignup,
       logout: doLogout,
       isAuthenticated: !!user,
     }),

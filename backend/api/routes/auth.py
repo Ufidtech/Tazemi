@@ -111,4 +111,7 @@ async def read_me(user=Depends(get_current_user)):
 
 @router.post("/signup")
 def signup(payload: dict = Body(default_factory=dict)):
+    # INTERNAL ONLY: This endpoint is disabled for public signup.
+    # Tazemi is an internal-only dashboard. Users must be created by backend/admin.
+    # This endpoint delegates to /login for backward compatibility only.
     return login(payload)

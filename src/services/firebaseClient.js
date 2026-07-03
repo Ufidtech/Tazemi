@@ -7,6 +7,7 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
+import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -29,9 +30,10 @@ const hasFirebaseConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.authDo
 const firebaseEnabled = hasFirebaseConfig && typeof window !== "undefined";
 const app = firebaseEnabled && getApps().length ? getApp() : firebaseEnabled ? initializeApp(firebaseConfig) : null;
 const auth = app ? getAuth(app) : null;
+const database = app ? getDatabase(app) : null;
 
 export function isFirebaseConfigured() {
   return firebaseEnabled;
 }
 
-export { auth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile };
+export { auth, database, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile };

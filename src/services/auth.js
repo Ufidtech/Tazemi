@@ -1,8 +1,23 @@
-import { auth, createUserWithEmailAndPassword, isFirebaseConfigured, onAuthStateChanged, signInWithEmailAndPassword, signOut, updateProfile } from "./firebaseClient";
+import {
+  auth,
+  isFirebaseConfigured,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "./firebaseClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1";
+const AUTH_MODE = import.meta.env.VITE_AUTH_MODE || "local"; // local | firebase | production
 const AUTH_KEY = "tazemi_auth_user";
 const FCM_AUTH_KEY = "tazemi_firebase_auth";
+
+function isLocalMode() {
+  return AUTH_MODE === "local";
+}
+
+function isProductionMode() {
+  return AUTH_MODE === "production";
+}
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -51,7 +66,11 @@ function mapFirebaseUser(firebaseUser) {
 
 function normalizeAuthError(error) {
   const code = error?.code || "";
-  if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password") || code.includes("auth/user-not-found")) {
+  if (
+    code.includes("auth/invalid-credential") ||
+    code.includes("auth/wrong-password") ||
+    code.includes("auth/user-not-found")
+  ) {
     return "Invalid email or password.";
   }
   if (code.includes("auth/email-already-in-use")) {
@@ -79,6 +98,7 @@ async function syncBackend(firebaseUser) {
 
   const idToken = await firebaseUser.getIdToken();
   const profile = mapFirebaseUser(firebaseUser);
+
   const result = await request("/auth/login", {
     method: "POST",
     body: JSON.stringify({
@@ -87,8 +107,10 @@ async function syncBackend(firebaseUser) {
       user: profile,
     }),
   });
+
   const sessionUser = result?.user || result;
   const combined = { ...profile, ...sessionUser };
+
   setStoredUser(combined);
   setFirebaseAuth(combined);
   return combined;
@@ -104,15 +126,43 @@ export function getAuthUser() {
 }
 
 export async function fetchRoles() {
+  if (isLocalMode()) {
+    return { roles: ["ceo", "field_operator"] };
+  }
   return request("/auth/roles");
 }
 
 export async function login(payload) {
-  if (!isFirebaseConfigured() || !auth) {
-    const fallbackUser = { uid: payload.email, email: payload.email, name: payload.email?.split("@")[0] || "User", role: "read-only", provider: "local" };
+  if (isLocalMode()) {
+    const fallbackUser = {
+      uid: payload.email,
+      email: payload.email,
+      name: payload.email?.split("@")[0] || "User",
+      role: "ceo",
+      provider: "local",
+    };
+
     setStoredUser(fallbackUser);
     setFirebaseAuth(fallbackUser);
     return fallbackUser;
+  }
+
+  if (!isFirebaseConfigured() || !auth) {
+    if (!isProductionMode()) {
+      const fallbackUser = {
+        uid: payload.email,
+        email: payload.email,
+        name: payload.email?.split("@")[0] || "User",
+        role: "read-only",
+        provider: "local",
+      };
+
+      setStoredUser(fallbackUser);
+      setFirebaseAuth(fallbackUser);
+      return fallbackUser;
+    }
+
+    throw new Error("Authentication is not available in this environment.");
   }
 
   try {
@@ -123,46 +173,36 @@ export async function login(payload) {
   }
 }
 
-export async function signup(payload) {
-  if (!isFirebaseConfigured() || !auth) {
-    const fallbackUser = { uid: payload.email, email: payload.email, name: payload.name || payload.email?.split("@")[0] || "User", role: payload.role || "read-only", provider: "local" };
-    setStoredUser(fallbackUser);
-    setFirebaseAuth(fallbackUser);
-    return fallbackUser;
-  }
-
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, payload.email, payload.password);
-    if (payload.name) {
-      await updateProfile(cred.user, { displayName: payload.name });
-    }
-    const nextUser = await syncBackend(cred.user);
-    return { ...nextUser, name: payload.name || nextUser.name, role: payload.role || nextUser.role };
-  } catch (error) {
-    throw new Error(normalizeAuthError(error));
-  }
-}
-
 export async function logout() {
   try {
-    if (auth) {
+    if (!isLocalMode() && auth) {
       await signOut(auth);
     }
-    const user = getStoredUser();
-    await request("/auth/logout", {
-      method: "POST",
-      body: JSON.stringify({ access_token: user?.access_token }),
-    });
+
+    if (!isLocalMode()) {
+      const user = getStoredUser();
+      await request("/auth/logout", {
+        method: "POST",
+        body: JSON.stringify({ access_token: user?.access_token }),
+      });
+    }
   } catch {
     // ignore for now
   }
+
   clearAuth();
 }
 
 export function subscribeToFirebaseAuth(callback) {
+  if (isLocalMode()) {
+    callback(getStoredUser());
+    return () => {};
+  }
+
   if (!auth) {
     callback(null);
-    return () => { };
+    return () => {};
   }
+
   return onAuthStateChanged(auth, callback);
 }

@@ -13,6 +13,7 @@ import CEODashboard from "./pages/dashboard/CEODashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import IoTMonitoring from "./pages/dashboard/IoTMonitoring";
+import AggregatorRegistration from "./pages/dashboard/AggregatorRegistration";
 import {
   Operations,
   Aggregators,
@@ -62,6 +63,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Aggregators />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/aggregators/register"
+          element={
+            <ProtectedRoute allowedRoles={["ceo", "field_operator"]}>
+              <AggregatorRegistration />
             </ProtectedRoute>
           }
         />
