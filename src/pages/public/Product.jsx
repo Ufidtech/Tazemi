@@ -10,7 +10,7 @@ export default function Product() {
         description={content.meta.product.description}
         url={content.meta.product.url}
       />
-      {/* nav */}
+      
       <Navbar />
       <section className="bg-deep text-white py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
