@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { DashboardLayout, DemoBanner, SearchBar, Badge } from "@components";
-import { getTrucks } from "../../services/demoData";
+import { getTrucks } from "../../services/liveData";
 
 function SensorVal({ value, unit, warn, danger }) {
   const cls =

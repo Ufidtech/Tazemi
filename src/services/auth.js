@@ -2,6 +2,7 @@ import {
   auth,
   isFirebaseConfigured,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
 } from "./firebaseClient";
@@ -13,6 +14,10 @@ const FCM_AUTH_KEY = "tazemi_firebase_auth";
 
 function isLocalMode() {
   return AUTH_MODE === "local";
+}
+
+function isBackendMode() {
+  return AUTH_MODE === "backend";
 }
 
 function isProductionMode() {
@@ -64,6 +69,29 @@ function mapFirebaseUser(firebaseUser) {
   };
 }
 
+// Canonical claim roles (PRD §1.2) → app-level role names
+const CLAIM_ROLE_MAP = {
+  CEO: "ceo",
+  FIELD_OPERATOR: "field_operator",
+  RND: "rnd",
+};
+
+/**
+ * Detect the user's role from their Firebase ID token custom claim.
+ * Forces a token refresh so a newly assigned role applies on the very
+ * next sign-in — no waiting for token expiry, no manual selection.
+ */
+async function detectRoleFromClaims(firebaseUser) {
+  if (!firebaseUser?.getIdTokenResult) return null;
+  try {
+    const { claims } = await firebaseUser.getIdTokenResult(true);
+    if (!claims?.role) return null;
+    return CLAIM_ROLE_MAP[claims.role] || String(claims.role).toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
 function normalizeAuthError(error) {
   const code = error?.code || "";
   if (
@@ -96,24 +124,43 @@ async function syncBackend(firebaseUser) {
     return profile;
   }
 
-  const idToken = await firebaseUser.getIdToken();
-  const profile = mapFirebaseUser(firebaseUser);
+  // Role authority: the ID token custom claim. Detected automatically —
+  // the backend mapping below is enrichment/fallback only.
+  const claimRole = await detectRoleFromClaims(firebaseUser);
+  const profile = {
+    ...mapFirebaseUser(firebaseUser),
+    ...(claimRole ? { role: claimRole } : {}),
+  };
 
-  const result = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({
-      provider: "firebase",
-      id_token: idToken,
-      user: profile,
-    }),
-  });
+  try {
+    const idToken = await firebaseUser.getIdToken();
+    const result = await request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        provider: "firebase",
+        id_token: idToken,
+        user: profile,
+      }),
+    });
 
-  const sessionUser = result?.user || result;
-  const combined = { ...profile, ...sessionUser };
+    const sessionUser = result?.user || result;
+    const combined = {
+      ...profile,
+      ...sessionUser,
+      // Claim wins over backend mapping; backend wins over default.
+      role: claimRole || sessionUser?.role || profile.role,
+      access_token: result?.access_token || sessionUser?.access_token || profile.access_token,
+    };
 
-  setStoredUser(combined);
-  setFirebaseAuth(combined);
-  return combined;
+    setStoredUser(combined);
+    setFirebaseAuth(combined);
+    return combined;
+  } catch {
+    // Backend unreachable — sign-in still succeeds with the claim-derived role.
+    setStoredUser(profile);
+    setFirebaseAuth(profile);
+    return profile;
+  }
 }
 
 export function clearAuth() {
@@ -132,7 +179,33 @@ export async function fetchRoles() {
   return request("/auth/roles");
 }
 
+async function backendLogin(payload) {
+  const result = await request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({
+      provider: "password",
+      email: payload.email,
+      password: payload.password,
+    }),
+  });
+
+  const sessionUser = result?.user || result;
+  const combined = {
+    ...sessionUser,
+    access_token: result?.access_token || sessionUser?.access_token,
+    provider: "backend",
+  };
+
+  setStoredUser(combined);
+  setFirebaseAuth(combined);
+  return combined;
+}
+
 export async function login(payload) {
+  if (isBackendMode()) {
+    return backendLogin(payload);
+  }
+
   if (isLocalMode()) {
     const fallbackUser = {
       uid: payload.email,
@@ -169,8 +242,31 @@ export async function login(payload) {
     const cred = await signInWithEmailAndPassword(auth, payload.email, payload.password);
     return syncBackend(cred.user);
   } catch (error) {
-    throw new Error(normalizeAuthError(error));
+    throw new Error(normalizeAuthError(error), { cause: error });
   }
+}
+
+/**
+ * Send a password-reset email via Firebase Auth ("Forgot password?").
+ * Always resolves with a generic message so account existence is never
+ * revealed (anti-enumeration).
+ */
+export async function resetPassword(email) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("Enter a valid email address first.");
+  }
+  if (!isFirebaseConfigured() || !auth) {
+    throw new Error("Password reset is not available in this environment.");
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    // Swallow user-not-found so emails can't be probed; surface real config errors.
+    if (!String(error?.code || "").includes("auth/user-not-found")) {
+      throw new Error(normalizeAuthError(error), { cause: error });
+    }
+  }
+  return "If an account exists for that email, a reset link has been sent.";
 }
 
 export async function logout() {
@@ -194,7 +290,7 @@ export async function logout() {
 }
 
 export function subscribeToFirebaseAuth(callback) {
-  if (isLocalMode()) {
+  if (isLocalMode() || isBackendMode()) {
     callback(getStoredUser());
     return () => {};
   }
@@ -205,4 +301,29 @@ export function subscribeToFirebaseAuth(callback) {
   }
 
   return onAuthStateChanged(auth, callback);
+}
+
+export async function fetchStaff() {
+  const user = getStoredUser();
+  return request("/auth/users", {
+    headers: { Authorization: `Bearer ${user?.access_token || ""}` },
+  });
+}
+
+export async function createStaffUser({ email, password, name, role }) {
+  const user = getStoredUser();
+  return request("/auth/users", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${user?.access_token || ""}` },
+    body: JSON.stringify({ email, password, name, role }),
+  });
+}
+
+export async function topupAggregator(aggregatorId, { amount, method, note }) {
+  const user = getStoredUser();
+  return request(`/aggregators/${aggregatorId}/topup`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${user?.access_token || ""}` },
+    body: JSON.stringify({ amount, method, note }),
+  });
 }

@@ -1,0 +1,137 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "aggregators": {
+      ".read": "auth != null",
+      ".indexOn": ["rfid_uid", "phone_number", "account_status"],
+      "$aggregator_id": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR' || auth.token.role === 'device')",
+        "account_status": {
+          ".validate": "newData.val() === 'ACTIVE' || newData.val() === 'SUSPENDED' || newData.val() === 'INACTIVE'"
+        },
+        "balance": { ".validate": "newData.isNumber()" }
+      }
+    },
+
+    "batches": {
+      ".read": "auth != null",
+      ".indexOn": ["aggregator_id", "batch_status", "created_at", "hub_id"],
+      "$batch_id": {
+        ".write": "auth != null && (auth.token.role === 'device' || auth.token.role === 'CEO')",
+        ".validate": "data.exists() || newData.hasChildren(['batch_id', 'aggregator_id', 'crate_count', 'amount_charged', 'batch_status', 'created_at'])"
+      }
+    },
+
+    "transactions": {
+      ".read": "auth != null",
+      ".indexOn": ["aggregator_id", "timestamp", "type", "stale_rate"],
+      "$transaction_id": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR' || auth.token.role === 'device') && !data.exists() && newData.exists()"
+      }
+    },
+
+    "phone_index": {
+      ".read": "auth != null",
+      "$phone": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR') && (!data.exists() || !newData.exists())"
+      }
+    },
+
+    "rfid_index": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR') && (!data.exists() || !newData.exists())"
+      }
+    },
+
+    "counters": {
+      ".read": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR' || auth.token.role === 'RND')",
+      "$counter": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR' || auth.token.role === 'RND')",
+        ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val() + 1)"
+      }
+    },
+
+    "pricing": {
+      ".read": "auth != null",
+      "current": {
+        ".write": "auth != null && auth.token.role === 'CEO'"
+      },
+      "changelog": {
+        "$entry": {
+          ".write": "auth != null && auth.token.role === 'CEO' && !data.exists()"
+        }
+      }
+    },
+
+    "formulas": {
+      ".read": "auth != null",
+      "$formula_id": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'RND')"
+      }
+    },
+
+    "scan_requests": {
+      ".read": "auth != null",
+      ".indexOn": ["device_id", "status"],
+      "$session_id": {
+        ".write": "auth != null && ((auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR') || (auth.token.role === 'device' && data.child('device_id').val() === auth.uid && newData.exists()))"
+      }
+    },
+
+    "scan_request_log": {
+      ".read": "auth != null && auth.token.role === 'CEO'",
+      "$session_id": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR') && !data.exists()"
+      }
+    },
+
+    "devices": {
+      ".read": "auth != null",
+      "$device_id": {
+        ".write": "auth != null && ((auth.token.role === 'device' && auth.uid === $device_id) || auth.token.role === 'CEO')"
+      }
+    },
+
+    "sync_errors": {
+      ".read": "auth != null && auth.token.role === 'CEO'",
+      "$error_id": {
+        ".write": "auth != null && auth.token.role === 'device' && !data.exists()"
+      }
+    },
+
+    "daily_logs": {
+      ".read": "auth != null",
+      "$date": {
+        ".write": "auth != null && auth.token.role === 'device'"
+      }
+    },
+
+    "stats": {
+      ".read": "auth != null",
+      ".write": false
+    },
+
+    "trucks": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.role === 'CEO'"
+    },
+
+    "trials": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'RND')"
+    },
+
+    "activity": {
+      ".read": "auth != null",
+      ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR')"
+    },
+
+    "dashboard": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.role === 'CEO'"
+    }
+  }
+}

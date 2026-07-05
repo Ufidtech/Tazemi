@@ -18,7 +18,7 @@ import {
   fetchDashboardSummary,
   fetchTrucks,
   fetchActivity,
-} from "../../services/api";
+} from "../../services/liveData";
 const COLORS = ["#1D9E75", "#085041", "#D85A30", "#17835f"];
 
 const pickMetric = (source, keys, fallback = 0) => {

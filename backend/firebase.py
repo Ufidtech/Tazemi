@@ -8,7 +8,10 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+# Load the repo-root .env (shared/frontend) first, then backend/.env which holds
+# backend-only secrets and takes precedence for backend keys.
 load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 import firebase_admin
 from firebase_admin import auth as firebase_auth
@@ -35,13 +38,24 @@ def initialize_firebase():
     service_account_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     database_url = os.getenv("FIREBASE_DATABASE_URL")
     project_id = os.getenv("FIREBASE_PROJECT_ID")
+    storage_bucket = os.getenv("FIREBASE_STORAGE_BUCKET")
 
     if not database_url:
         raise FirebaseConfigurationError("FIREBASE_DATABASE_URL is required to initialize Firebase")
 
     if service_account_json:
-        service_account_info = json.loads(service_account_json)
-        cred = credentials.Certificate(service_account_info)
+        try:
+            service_account_info = json.loads(service_account_json)
+            cred = credentials.Certificate(service_account_info)
+        except (json.JSONDecodeError, ValueError) as exc:
+            if service_account_path:
+                cred = credentials.Certificate(Path(service_account_path))
+            else:
+                raise FirebaseConfigurationError(
+                    "FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON (a service-account key does not "
+                    "paste cleanly into a .env file). Save the downloaded key as a file and set "
+                    "GOOGLE_APPLICATION_CREDENTIALS to its path instead."
+                ) from exc
     elif service_account_path:
         cred = credentials.Certificate(Path(service_account_path))
     else:
@@ -52,6 +66,8 @@ def initialize_firebase():
     options: dict[str, Any] = {"databaseURL": database_url}
     if project_id:
         options["projectId"] = project_id
+    if storage_bucket:
+        options["storageBucket"] = storage_bucket
 
     return firebase_admin.initialize_app(cred, options)
 
@@ -110,3 +126,58 @@ def ensure_initialized() -> None:
         initialize_firebase()
     except Exception:
         pass
+
+
+def upload_bytes_to_storage(path: str, data: bytes, content_type: str | None = None) -> str:
+    """Upload bytes to Firebase Storage and return a private storage reference.
+
+    The object is NOT made public. A ``gs://`` reference is returned so that
+    access can be brokered later via short-lived signed URLs. Requires
+    FIREBASE_STORAGE_BUCKET to be configured.
+    """
+    from firebase_admin import storage
+
+    initialize_firebase()
+    bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET")
+    bucket = storage.bucket(bucket_name) if bucket_name else storage.bucket()
+    blob = bucket.blob(path)
+    blob.upload_from_string(data, content_type=content_type)
+    return f"gs://{bucket.name}/{path}"
+
+
+def generate_signed_photo_url(storage_reference: str, expiry_minutes: int = 15) -> str | None:
+    """Generate a short-lived signed URL for a ``gs://bucket/path`` reference."""
+    from datetime import timedelta
+
+    from firebase_admin import storage
+
+    if not storage_reference.startswith("gs://"):
+        return storage_reference
+    initialize_firebase()
+    without_scheme = storage_reference[len("gs://"):]
+    bucket_name, _, object_path = without_scheme.partition("/")
+    bucket = storage.bucket(bucket_name)
+    blob = bucket.blob(object_path)
+    try:
+        return blob.generate_signed_url(expiration=timedelta(minutes=expiry_minutes), version="v4", method="GET")
+    except Exception:
+        return None
+
+
+def next_sequence(counter_name: str, start: int = 1) -> int:
+    """Atomically increment and return a named counter in the Realtime Database."""
+    ref = get_db_reference(f"/counters/{counter_name}")
+
+    def _increment(current):
+        return (current or start - 1) + 1
+
+    return ref.transaction(_increment)
+
+
+def multi_location_update(updates: dict) -> None:
+    """Atomically write to multiple Realtime Database paths in one operation.
+
+    ``updates`` maps absolute paths (e.g. "registrations/AGG-004") to values.
+    RTDB applies all writes atomically - they all succeed or all fail.
+    """
+    get_db_reference("/").update(updates)

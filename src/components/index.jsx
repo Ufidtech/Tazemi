@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { getDataSource, subscribeDataSource } from "../services/liveData";
 
 export function PageMeta({ title, description, url, image }) {
   useEffect(() => {
@@ -156,6 +157,7 @@ export function Footer() {
 }
 
 export function Sidebar({ active }) {
+  const { user } = useAuth();
   const links = [
     ["📊", "CEO Dashboard", "/dashboard"],
     ["📡", "IoT Monitoring", "/dashboard/iot"],
@@ -163,6 +165,9 @@ export function Sidebar({ active }) {
     ["🏢", "Aggregator Directory", "/dashboard/aggregators"],
     ["🔬", "Bio-Shield R&D", "/dashboard/rd"],
     ["📈", "Truck Data Analysis", "/dashboard/analysis"],
+    ...(String(user?.role).toLowerCase() === "ceo"
+      ? [["👥", "Staff Management", "/dashboard/staff"]]
+      : []),
   ];
   return (
     <aside className="w-full md:w-64 bg-deep text-white md:min-h-screen flex flex-col shrink-0">
@@ -201,6 +206,14 @@ export function Sidebar({ active }) {
 }
 
 export function DemoBanner() {
+  const [source, setSource] = useState(getDataSource());
+
+  useEffect(() => subscribeDataSource(setSource), []);
+
+  // Only warn when bundled demo data is actually on screen.
+  // Live DB or backend API data → no banner.
+  if (source !== "demo") return null;
+
   return (
     <div className="demo-banner">
       <span className="text-amber-600 text-lg">⚠</span>

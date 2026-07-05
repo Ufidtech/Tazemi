@@ -9,6 +9,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "seed": "node scripts/seedDemoData.mjs",
+    "seed:purge": "node scripts/seedDemoData.mjs --purge",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
@@ -30,6 +32,7 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-admin": "^13.0.0",
     "gh-pages": "^6.3.0",
     "globals": "^17.6.0",
     "postcss": "^8.5.15",

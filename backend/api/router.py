@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from .routes import health, dashboard, trucks, batches, aggregators, trials, insights, auth, reports, notes, sensors, alerts, ingest, demo
 from backend.data.demo_data import DEMO_DATA
+from backend.services.registration_service import list_transactions
 
 api_router = APIRouter()
 
@@ -24,3 +25,8 @@ api_router.include_router(demo.router, tags=["demo"])
 @api_router.get("/activity", tags=["dashboard"])
 def activity():
     return DEMO_DATA.get("activity", [])
+
+
+@api_router.get("/transactions", tags=["transactions"])
+def transactions(aggregator_id: str | None = None):
+    return list_transactions(aggregator_id)

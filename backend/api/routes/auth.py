@@ -2,16 +2,22 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 
 from backend.auth import (
     ROLE_MATRIX,
+    SESSION_STORE,
     assert_permission,
+    audit_log,
     clear_demo_sessions,
     consume_magic_link,
     create_magic_link,
     get_current_user,
     issue_session,
     refresh_session,
+    resolve_actor,
+    resolve_token_role,
     revoke_session,
 )
 from backend.firebase import verify_id_token
+from backend.services.staff_service import authenticate
+from backend.services.user_service import create_staff_user, find_or_create_user, list_staff
 
 
 class TokenTooEarlyError(HTTPException):
@@ -22,7 +28,7 @@ router = APIRouter()
 
 @router.get("/roles")
 def roles():
-    return {"roles": list(ROLE_MATRIX.keys())}
+    return {"roles": ["ceo", "field_operator"]}
 
 
 @router.post("/login")
@@ -39,6 +45,16 @@ def login(payload: dict = Body(default_factory=dict)):
     if isinstance(user, dict):
         id_token = user.get("id_token") or payload.get("id_token")
 
+    # Direct email/password login against the backend staff store.
+    email = payload.get("email") or (user.get("email") if isinstance(user, dict) else None)
+    password = payload.get("password") or (user.get("password") if isinstance(user, dict) else None)
+    if not id_token and (provider == "password" or password):
+        authenticated = authenticate(email, password)
+        if not authenticated:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        session = issue_session(authenticated, provider="password")
+        return {"user": session["user"], "access_token": session["access_token"], "refresh_token": session["refresh_token"], "expires_at": session["expires_at"], "refresh_expires_at": session["refresh_expires_at"], "provider": session["provider"]}
+
     if id_token:
         try:
             decoded = verify_id_token(id_token)
@@ -51,11 +67,13 @@ def login(payload: dict = Body(default_factory=dict)):
                 ) from exc
             raise HTTPException(status_code=401, detail="Invalid Firebase token") from exc
 
+        # Find or create the user in the DB and load the role from the DB.
+        db_user = find_or_create_user({**decoded, "provider": "firebase"}, resolve_token_role(decoded))
         user = {
             "uid": decoded.get("uid"),
             "email": decoded.get("email"),
             "name": decoded.get("name") or decoded.get("email") or "Firebase User",
-            "role": payload.get("role") or decoded.get("role") or "read-only",
+            "role": db_user.get("role") or resolve_token_role(decoded),
             "provider": "firebase",
         }
     elif isinstance(user, dict):
@@ -93,7 +111,11 @@ def refresh(payload: dict = Body(default_factory=dict)):
 def logout(payload: dict = Body(default_factory=dict)):
     token = payload.get("access_token")
     if token:
+        session_user = SESSION_STORE.get(token, {}).get("user")
+        audit_log("auth.logout", session_user, "auth", {"had_token": True})
         revoke_session(token)
+    else:
+        audit_log("auth.logout", None, "auth", {"had_token": False})
     return {"logged_out": True}
 
 
@@ -107,6 +129,39 @@ def logout_all():
 async def read_me(user=Depends(get_current_user)):
     assert_permission(user, "read")
     return {"user": user, "permissions": ROLE_MATRIX.get((user.get("role") or "read-only").lower(), ROLE_MATRIX["read-only"])}
+
+
+STAFF_ADMIN_ROLES = {"ceo", "admin"}
+ASSIGNABLE_ROLES = {"ceo", "field_operator"}
+
+
+@router.get("/users")
+def read_staff(actor=Depends(resolve_actor)):
+    if (actor.get("role") or "").lower() not in STAFF_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Only the CEO can manage staff")
+    return list_staff()
+
+
+@router.post("/users")
+def create_staff(payload: dict = Body(default_factory=dict), actor=Depends(resolve_actor)):
+    if (actor.get("role") or "").lower() not in STAFF_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Only the CEO can create staff accounts")
+
+    email = (payload.get("email") or "").strip()
+    password = payload.get("password") or ""
+    name = (payload.get("name") or "").strip() or None
+    role = (payload.get("role") or "field_operator").lower()
+
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email is required")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if role not in ASSIGNABLE_ROLES:
+        raise HTTPException(status_code=400, detail="Role must be 'ceo' or 'field_operator'")
+
+    created = create_staff_user(email, password, name, role)
+    audit_log("staff.create", actor, "users", {"email": email, "role": role})
+    return created
 
 
 @router.post("/signup")

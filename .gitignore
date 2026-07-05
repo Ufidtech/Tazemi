@@ -13,11 +13,16 @@ backend/*.pyc
 backend/**/*.pyc
 backend/.venv/
 backend/venv/
+.venv/
+backend/uploads/
 dist
 dist-ssr
 *.local
 .env
 backend/.env
+backend/service-account*.json
+**/serviceAccount*.json
+**/*firebase-adminsdk*.json
 
 # Editor directories and files
 .vscode/*

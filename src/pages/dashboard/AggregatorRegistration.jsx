@@ -1,29 +1,27 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import RegistrationForm from "./components/RegistrationForm";
 import RFIDScanModal from "./components/RFIDScanModal";
 import SuccessScreen from "./components/SuccessScreen";
 import { useRFIDScan } from "../../hooks/useRFIDScan";
+import { useDeviceStatus } from "../../hooks/useDeviceStatus";
+import { registerAggregator, isRfidAvailable, archiveScanRequest } from "../../services/tazemiDb";
+import { auth } from "../../services/firebaseClient";
 
 /**
- * AggregatorRegistration Container Component
+ * AggregatorRegistration Container Component (PRD v2.1 §3.1)
  *
- * CONTAINER/SMART component - handles all orchestration logic.
- * Uses:
- * - useRFIDScan hook (Firebase scan logic)
- * - RegistrationForm (presentational)
- * - RFIDScanModal (presentational)
- * - SuccessScreen (presentational)
+ * Save path is BACKEND-FIRST:
+ * 1. FastAPI /aggregators/register — NIN/BVN encryption (Fernet), photo
+ *    upload, atomic multi-location write via Admin SDK, audit log (§6.2)
+ * 2. Fallback (backend unreachable only): client-side Firebase write via
+ *    tazemiDb.registerAggregator — stores masked NIN only, never raw
  *
- * Flow:
- * 1. User fills form → setFormData updates
- * 2. User clicks "Scan Card" → validate, start scan, show modal
- * 3. TAPU scans card → hook receives UID → modal shows success
- * 4. User clicks "Continue" → set rfidUID in form
- * 5. User clicks "Save Registration" → POST to backend
- * 6. Backend returns aggregator → show success screen
+ * Real-time concerns (device heartbeat, RFID scan bridge) stay on
+ * Firebase listeners — the backend cannot push those.
  */
 
+const TAPU_DEVICE_ID = import.meta.env.VITE_TAPU_DEVICE_ID || "TAPU-KN-01";
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1";
 
@@ -49,28 +47,20 @@ export default function AggregatorRegistration() {
   // Successfully created aggregator (shown on success screen)
   const [newAggregator, setNewAggregator] = useState(null);
 
-  // Device online status (TODO: integrate with device heartbeat listener)
-  const [deviceOnline, setDeviceOnline] = useState(true);
+  // Live device status from /devices/{id}/heartbeat (§5.3 — advisory)
+  const { online: deviceOnline } = useDeviceStatus(TAPU_DEVICE_ID);
 
-  // RFID scan hook
+  // RFID scan hook (§2.6/§3.1)
   const {
     scanning,
+    status: scanStatus,
     uid,
     error: scanError,
     timeRemaining,
+    sessionId: scanSessionId,
     startScan,
     cancelScan,
-  } = useRFIDScan("TAPU-KN-01");
-
-  /**
-   * When UID is received from TAPU, auto-fill form field
-   * and show modal success state
-   */
-  useEffect(() => {
-    if (uid && screen === "scanning") {
-      setFormData((prev) => ({ ...prev, rfidUID: uid }));
-    }
-  }, [uid, screen]);
+  } = useRFIDScan(TAPU_DEVICE_ID, user?.uid);
 
   /**
    * Handle form field changes
@@ -148,18 +138,31 @@ export default function AggregatorRegistration() {
   /**
    * Handle manual UID entry (if scan times out or device offline)
    * Called when user enters UID manually and clicks "Confirm"
+   * §3.1: validated against /rfid_index for uniqueness before accept.
    */
-  const handleManualUID = (manualUID) => {
+  const handleManualUID = async (manualUID) => {
     if (!manualUID) return;
 
+    const candidate = String(manualUID).toUpperCase();
+
     // Validate: 8-char hex
-    if (!/^[0-9A-F]{8}$/.test(manualUID)) {
+    if (!/^[0-9A-F]{8}$/.test(candidate)) {
       setGeneralError("UID must be 8 hex characters (0-9, A-F)");
       return;
     }
 
+    // §2.8 uniqueness check (advisory; rules enforce no-overwrite)
+    try {
+      if (!(await isRfidAvailable(candidate))) {
+        setGeneralError("This RFID card is already assigned to another aggregator");
+        return;
+      }
+    } catch {
+      // Index unreachable — final enforcement happens at save via rules
+    }
+
     // Update form and go back to form screen
-    setFormData((prev) => ({ ...prev, rfidUID: manualUID }));
+    setFormData((prev) => ({ ...prev, rfidUID: candidate }));
     setScreen("form");
     setGeneralError("");
   };
@@ -207,18 +210,46 @@ export default function AggregatorRegistration() {
   };
 
   /**
-   * Save registration to backend
+   * Save registration (PRD v2.1 §3.1) — backend-first.
    *
-   * Backend should:
-   * 1. Generate aggregator ID (AGG-001, etc.)
-   * 2. Upload photo to Firebase Storage
-   * 3. Encrypt NIN/BVN
-   * 4. Create atomic write:
-   *    - /aggregators/{id} (all fields)
-   *    - /transactions/{id1} (initial TOPUP)
-   *    - /transactions/{id2} (CARD_FEE deduction)
-   * 5. Return created aggregator
+   * The FastAPI backend encrypts NIN/BVN, uploads the photo, performs the
+   * atomic write via the Admin SDK, and audit-logs the action. Only if the
+   * backend is UNREACHABLE (network error — not a 4xx rejection) does the
+   * client-side Firebase fallback run, storing the masked NIN only.
    */
+  const registerViaBackend = async () => {
+    const idToken = await auth?.currentUser?.getIdToken().catch(() => null);
+    const submitData = new FormData();
+    submitData.append("full_name", formData.fullName);
+    submitData.append("phone_number", formData.phoneNumber);
+    submitData.append("market_location", formData.marketLocation);
+    submitData.append("nin_or_bvn", formData.ninOrBVN);
+    submitData.append("rfid_uid", formData.rfidUID.toUpperCase());
+    submitData.append("initial_topup", Number(formData.topUpAmount));
+    submitData.append("created_by", user?.uid || "unknown");
+    submitData.append("photo", formData.photo);
+
+    const response = await fetch(`${API_BASE}/aggregators/register`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${user?.access_token || idToken || ""}`,
+      },
+      body: submitData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const err = new Error(
+        errorData.detail || errorData.message || `Registration failed (${response.status})`,
+      );
+      err.httpStatus = response.status;
+      throw err;
+    }
+
+    const result = await response.json();
+    return result?.data || result?.aggregator || result;
+  };
+
   const handleSaveRegistration = async () => {
     setGeneralError("");
 
@@ -229,40 +260,29 @@ export default function AggregatorRegistration() {
     setIsLoading(true);
 
     try {
-      // Prepare FormData for multipart upload (photo)
-      const submitData = new FormData();
-      submitData.append("full_name", formData.fullName);
-      submitData.append("phone_number", formData.phoneNumber);
-      submitData.append("market_location", formData.marketLocation);
-      submitData.append("nin_or_bvn", formData.ninOrBVN);
-      submitData.append("rfid_uid", formData.rfidUID.toUpperCase());
-      submitData.append("photo", formData.photo);
-      submitData.append("initial_topup", Number(formData.topUpAmount));
-      submitData.append("created_by", user?.uid || "unknown");
+      let aggregator;
+      try {
+        aggregator = await registerViaBackend();
+        console.log("[Registration] Saved via backend:", aggregator?.id);
+        if (scanSessionId) await archiveScanRequest(scanSessionId).catch(() => {});
+      } catch (backendError) {
+        // 4xx/5xx = real rejection (validation, auth, duplicate) — surface it.
+        if (backendError.httpStatus) throw backendError;
 
-      // Call backend API
-      const response = await fetch(`${API_BASE}/aggregators/register`, {
-        method: "POST",
-        headers: {
-          // Note: Don't set Content-Type for FormData - browser sets it automatically
-          Authorization: `Bearer ${user?.access_token || ""}`,
-        },
-        body: submitData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message ||
-            errorData.detail ||
-            `Registration failed (${response.status})`,
-        );
+        // Network failure — backend unreachable. Client-side Firebase fallback.
+        console.warn("[Registration] Backend unreachable, using Firebase fallback");
+        aggregator = await registerAggregator({
+          fullName: formData.fullName,
+          phoneNumber: formData.phoneNumber,
+          marketLocation: formData.marketLocation,
+          ninOrBvn: formData.ninOrBVN,
+          photoFile: formData.photo,
+          rfidUid: formData.rfidUID,
+          initialTopUp: Number(formData.topUpAmount),
+          operatorId: user?.uid || "unknown",
+          scanSessionId,
+        });
       }
-
-      const result = await response.json();
-      const aggregator = result?.data || result?.aggregator || result;
-
-      console.log("[Registration] Success:", aggregator);
 
       // Show success screen
       setNewAggregator(aggregator);
@@ -276,23 +296,26 @@ export default function AggregatorRegistration() {
   };
 
   /**
-   * Handle successful scan - auto-fill UID and offer to save
-   * Called when RFID modal shows success
+   * Handle successful scan — auto-fill UID and return to form
+   * Called when the user clicks "Continue" on the modal's success state.
    */
   const handleScanSuccess = () => {
-    // UID is already auto-filled via useEffect
-    // Just return to form so user can review and save
+    if (uid) {
+      setFormData((prev) => ({ ...prev, rfidUID: uid }));
+    }
     setScreen("form");
   };
 
   /**
-   * Determine current modal status
-   * Hook might be scanning, but we also have timeouts
+   * Determine current modal status (§3.1)
+   * "not_responding" (no SCANNING within 5s) and "expired" both offer
+   * Retry / Enter manually — the modal renders them as the timeout state.
    */
   const getModalStatus = () => {
-    if (scanning && !uid && !scanError) return "scanning";
-    if (scanError) return "timeout";
-    if (uid) return "complete";
+    if (scanStatus === "complete" || uid) return "complete";
+    if (scanStatus === "not_responding" || scanStatus === "expired" || scanError)
+      return "timeout";
+    if (scanning) return "scanning";
     return null;
   };
 
@@ -350,10 +373,13 @@ export default function AggregatorRegistration() {
           status={getModalStatus()}
           timeRemaining={timeRemaining}
           uid={uid}
-          onRetry={handleScanClick}
-          onManualEntry={() => {
+          onRetry={async () => {
+            await cancelScan(); // clear any lingering PENDING request
+            handleScanClick();
+          }}
+          onManualEntry={async () => {
+            await cancelScan(); // don't leave an orphaned scan request
             setScreen("form");
-            // Reset for manual entry
           }}
           onCancel={() => {
             setScreen("form");

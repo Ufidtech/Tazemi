@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import html
+import os
 import re
 from secrets import token_urlsafe
 from typing import Any
@@ -12,6 +13,7 @@ from backend.firebase import initialize_firebase
 ROLE_MATRIX = {
     "ceo": {"read": True, "write": True, "admin": True},
     "admin": {"read": True, "write": True, "admin": True},
+    "field_operator": {"read": True, "write": True, "admin": False},
     "research": {"read": True, "write": True, "admin": False},
     "ops": {"read": True, "write": True, "admin": False},
     "read-only": {"read": True, "write": False, "admin": False},
@@ -35,6 +37,22 @@ RATE_LIMIT_WRITE_MAX_REQUESTS = 30
 def _role_of(user: dict) -> str:
     role = (user.get("role") or user.get("custom_claims", {}).get("role") or "read-only").lower()
     return "ops" if role in {"operation", "operator"} else role
+
+
+def resolve_token_role(decoded: dict) -> str:
+    """Resolve a role for a verified Firebase token.
+
+    Priority: persisted user DB role -> custom-claim role ->
+    STAFF_ROLES email mapping -> read-only. The frontend-provided role is
+    never trusted here.
+    """
+    from backend.services.staff_service import role_for_email
+    from backend.services.user_service import role_from_db
+
+    db_role = role_from_db(decoded.get("uid") or decoded.get("email"))
+    claim_role = decoded.get("role") or (decoded.get("claims") or {}).get("role")
+    role = db_role or claim_role or role_for_email(decoded.get("email")) or "read-only"
+    return "ops" if str(role).lower() in {"operation", "operator"} else str(role).lower()
 
 
 def assert_permission(user: dict, permission: str):
@@ -146,7 +164,7 @@ async def get_current_user(authorization: str | None = Header(default=None, alia
     try:
         initialize_firebase()
         decoded = firebase_auth.verify_id_token(token)
-        decoded["role"] = _role_of(decoded)
+        decoded["role"] = resolve_token_role(decoded)
         return decoded
     except Exception:
         return get_session_user(token)
@@ -162,6 +180,42 @@ def require_role(*allowed_roles: str):
         return current_user
 
     return dependency
+
+
+def local_auth_allowed() -> bool:
+    """Whether an unauthenticated dev/local fallback identity is permitted.
+
+    Disabled by default in production; enabled otherwise unless explicitly
+    turned off via ALLOW_LOCAL_AUTH=false.
+    """
+    env = (os.getenv("APP_ENV") or os.getenv("ENVIRONMENT") or "").lower()
+    if env in {"production", "prod"}:
+        return os.getenv("ALLOW_LOCAL_AUTH", "false").lower() == "true"
+    return os.getenv("ALLOW_LOCAL_AUTH", "true").lower() == "true"
+
+
+async def resolve_actor(authorization: str | None = Header(default=None, alias="Authorization")) -> dict[str, Any]:
+    """Resolve the acting user for write endpoints.
+
+    Verifies a Firebase ID token or an issued session token. Falls back to a
+    local development identity only when local auth is allowed.
+    """
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+        if token:
+            try:
+                initialize_firebase()
+                decoded = firebase_auth.verify_id_token(token)
+                decoded["role"] = resolve_token_role(decoded)
+                return decoded
+            except Exception:
+                try:
+                    return get_session_user(token)
+                except HTTPException:
+                    pass
+    if local_auth_allowed():
+        return {"uid": "dev-user", "email": "dev@tazemi.local", "role": "ceo", "provider": "local"}
+    raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def require_https(request_headers: dict[str, str] | None = None) -> None:

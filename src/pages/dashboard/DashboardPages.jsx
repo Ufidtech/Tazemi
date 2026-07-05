@@ -1,12 +1,14 @@
 // ── COATING OPERATIONS PAGE ──────────────────────────────────
 import React, { useEffect, useMemo, useState } from "react";
 import { DashboardLayout, DemoBanner, SearchBar, Badge } from "@components";
+import { useAuth } from "../../context/AuthContext";
+import { topupAggregator } from "../../services/auth";
 import {
   fetchAggregators,
   fetchBatches,
   fetchTrials,
   fetchTrucks,
-} from "../../services/api";
+} from "../../services/liveData";
 import {
   LineChart,
   Line,
@@ -248,6 +250,7 @@ export function Operations() {
 
 // ── AGGREGATOR DIRECTORY ──────────────────────────────────────
 export function Aggregators() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
@@ -255,10 +258,23 @@ export function Aggregators() {
   const [batches, setBatches] = useState([]);
   const [trucks, setTrucks] = useState([]);
 
-  useEffect(() => {
+  // Top-up flow state
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [topupForm, setTopupForm] = useState({ amount: "", method: "cash", note: "" });
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupError, setTopupError] = useState("");
+  const [topupSuccess, setTopupSuccess] = useState("");
+
+  const canTopUp = ["ceo", "field_operator"].includes(String(user?.role).toLowerCase());
+
+  const loadAggregators = () => {
     fetchAggregators()
       .then((data) => setAggregators(Array.isArray(data) ? data : []))
       .catch(() => setAggregators([]));
+  };
+
+  useEffect(() => {
+    loadAggregators();
     fetchBatches()
       .then((data) => setBatches(Array.isArray(data) ? data : []))
       .catch(() => setBatches([]));
@@ -267,13 +283,49 @@ export function Aggregators() {
       .catch(() => setTrucks([]));
   }, []);
 
+  const resetTopup = () => {
+    setTopupOpen(false);
+    setTopupForm({ amount: "", method: "cash", note: "" });
+    setTopupError("");
+    setTopupSuccess("");
+  };
+
+  const submitTopup = async () => {
+    setTopupError("");
+    setTopupSuccess("");
+    const amount = Number(topupForm.amount);
+    if (!amount || amount < 1000) {
+      setTopupError("Top-up amount must be at least ₦1,000");
+      return;
+    }
+    setTopupLoading(true);
+    try {
+      const result = await topupAggregator(selected.id, {
+        amount,
+        method: topupForm.method,
+        note: topupForm.note,
+      });
+      const updated = result?.aggregator || result;
+      setSelected(updated);
+      setAggregators((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+      setTopupSuccess(`Balance updated to ₦${Number(updated.balance || 0).toLocaleString()}`);
+      setTopupForm({ amount: "", method: "cash", note: "" });
+      setTopupOpen(false);
+    } catch (err) {
+      setTopupError(err.message || "Top-up failed");
+    } finally {
+      setTopupLoading(false);
+    }
+  };
+
   const filtered = aggregators.filter((a) => {
     const q = search.toLowerCase();
     const match =
       !q ||
-      a.name.toLowerCase().includes(q) ||
-      a.location.toLowerCase().includes(q) ||
-      a.id.toLowerCase().includes(q);
+      (a.name || "").toLowerCase().includes(q) ||
+      (a.location || "").toLowerCase().includes(q) ||
+      (a.contact || a.phone_number || "").toLowerCase().includes(q) ||
+      (a.id || "").toLowerCase().includes(q);
     return match && (filter === "all" || a.status === filter);
   });
 
@@ -289,7 +341,7 @@ export function Aggregators() {
       <SearchBar
         value={search}
         onChange={setSearch}
-        placeholder="Search by aggregator name, location, or ID..."
+        placeholder="Search by aggregator name, location, phone, or ID..."
       >
         <div className="flex gap-2">
           {["all", "active", "pilot", "inactive"].map((f) => (
@@ -322,7 +374,7 @@ export function Aggregators() {
             <div className="grid grid-cols-3 gap-2 text-center">
               {[
                 [a.batches, "Batches"],
-                [a.crates.toLocaleString(), "Crates"],
+                [Number(a.crates || 0).toLocaleString(), "Crates"],
                 [`${a.spoilage_rate}%`, "Spoilage"],
               ].map(([v, l]) => (
                 <div key={l} className="bg-mist rounded-lg py-2">
@@ -331,6 +383,16 @@ export function Aggregators() {
                 </div>
               ))}
             </div>
+            {a.source === "registration" && (
+              <div className="mt-3 bg-teal/10 rounded-lg py-2 px-3 text-center">
+                <div className="font-black text-teal text-sm">
+                  ₦{Number(a.balance || 0).toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Card Balance · {a.rfid_uid}
+                </div>
+              </div>
+            )}
             <div className="mt-3 text-teal text-xs font-semibold">
               View profile →
             </div>
@@ -356,7 +418,10 @@ export function Aggregators() {
                 </div>
               </div>
               <button
-                onClick={() => setSelected(null)}
+                onClick={() => {
+                  setSelected(null);
+                  resetTopup();
+                }}
                 className="text-white/60 hover:text-white text-2xl"
               >
                 ✕
@@ -366,10 +431,10 @@ export function Aggregators() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {[
                   [selected.batches, "Total Batches"],
-                  [selected.crates.toLocaleString(), "Total Crates"],
+                  [Number(selected.crates || 0).toLocaleString(), "Total Crates"],
                   [`${selected.spoilage_rate}%`, "Avg Spoilage"],
                   [
-                    `₦${selected.revenue.toLocaleString()}`,
+                    `₦${Number(selected.revenue || 0).toLocaleString()}`,
                     "Revenue Generated",
                   ],
                 ].map(([v, l]) => (
@@ -379,6 +444,103 @@ export function Aggregators() {
                   </div>
                 ))}
               </div>
+              {selected.source === "registration" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-teal/10 rounded-xl p-4 text-center">
+                    <div className="font-black text-teal text-lg">
+                      ₦{Number(selected.balance || 0).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Card Balance
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 text-center">
+                    <div className="font-black text-deep text-lg font-mono">
+                      {selected.rfid_uid}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">RFID UID</div>
+                  </div>
+                </div>
+              )}
+              {selected.source === "registration" && canTopUp && (
+                <div className="mb-6">
+                  {topupSuccess && (
+                    <div className="mb-3 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                      ✓ {topupSuccess}
+                    </div>
+                  )}
+                  {!topupOpen ? (
+                    <button
+                      onClick={() => {
+                        setTopupOpen(true);
+                        setTopupSuccess("");
+                        setTopupError("");
+                      }}
+                      className="px-5 py-2.5 bg-teal text-white rounded-lg font-semibold hover:bg-deep transition"
+                    >
+                      ＋ Top Up Balance
+                    </button>
+                  ) : (
+                    <div className="border border-gray-200 rounded-xl p-4 bg-mist/40">
+                      <div className="font-bold text-deep mb-3">Top up {selected.name}</div>
+                      {topupError && (
+                        <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-2 text-sm text-red-800">
+                          ⚠️ {topupError}
+                        </div>
+                      )}
+                      {!selected.card_fee_paid && (
+                        <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-900">
+                          ₦1,000 card fee will be deducted from this first top-up.
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input
+                          type="number"
+                          min="1000"
+                          step="500"
+                          placeholder="Amount (min ₦1,000)"
+                          value={topupForm.amount}
+                          onChange={(e) => setTopupForm((p) => ({ ...p, amount: e.target.value }))}
+                          className="border rounded-lg px-3 py-2.5"
+                        />
+                        <select
+                          value={topupForm.method}
+                          onChange={(e) => setTopupForm((p) => ({ ...p, method: e.target.value }))}
+                          className="border rounded-lg px-3 py-2.5 bg-white"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Note (optional)"
+                          value={topupForm.note}
+                          onChange={(e) => setTopupForm((p) => ({ ...p, note: e.target.value }))}
+                          className="border rounded-lg px-3 py-2.5 sm:col-span-2"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={submitTopup}
+                          disabled={topupLoading}
+                          className="px-5 py-2.5 bg-teal text-white rounded-lg font-semibold hover:bg-deep disabled:opacity-60 transition"
+                        >
+                          {topupLoading ? "Processing…" : "Confirm Top Up"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTopupOpen(false);
+                            setTopupError("");
+                          }}
+                          className="px-5 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-600 hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
                 {[
                   ["Contact", selected.contact],

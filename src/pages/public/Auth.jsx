@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar, Footer, PageMeta } from "../../components";
 import { useAuth } from "../../context/AuthContext";
+import { resetPassword } from "../../services/auth";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -12,7 +13,9 @@ export default function Auth() {
     setError: setAuthError,
   } = useAuth();
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -26,6 +29,7 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
     try {
       await login({ email: form.email, password: form.password });
       navigate("/dashboard", { replace: true });
@@ -35,6 +39,20 @@ export default function Auth() {
       setAuthError?.(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onForgotPassword = async () => {
+    setError("");
+    setNotice("");
+    setResetting(true);
+    try {
+      const message = await resetPassword(form.email);
+      setNotice(message);
+    } catch (err) {
+      setError(err.message || "Could not send reset email");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -75,12 +93,22 @@ export default function Auth() {
             />
 
             {error && <div className="text-sm text-tomato">{error}</div>}
+            {notice && <div className="text-sm text-teal">{notice}</div>}
 
             <button
               disabled={loading}
               className="w-full bg-teal text-white py-3 rounded-lg font-semibold disabled:opacity-60"
             >
               {loading ? "Logging in..." : "Login"}
+            </button>
+
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              disabled={resetting}
+              className="w-full text-sm text-gray-500 hover:text-teal transition disabled:opacity-60"
+            >
+              {resetting ? "Sending reset link..." : "Forgot password?"}
             </button>
           </form>
         )}
