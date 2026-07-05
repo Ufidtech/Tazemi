@@ -8,7 +8,12 @@ import {
 } from "./firebaseClient";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1";
-const AUTH_MODE = import.meta.env.VITE_AUTH_MODE || "local"; // local | firebase | production
+// local | backend | firebase | production. The "local" fake-session fallback
+// is dev-only — production builds default to real Firebase auth so a missing
+// env var can never ship a build that logs in without credentials.
+const AUTH_MODE =
+  import.meta.env.VITE_AUTH_MODE ||
+  (import.meta.env.PROD ? "production" : "local");
 const AUTH_KEY = "tazemi_auth_user";
 const FCM_AUTH_KEY = "tazemi_firebase_auth";
 

@@ -81,6 +81,8 @@ export default function Auth() {
               className="w-full border rounded-lg px-4 py-3"
               type="email"
               placeholder="Email"
+              required
+              autoComplete="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
@@ -88,6 +90,8 @@ export default function Auth() {
               className="w-full border rounded-lg px-4 py-3"
               type="password"
               placeholder="Password"
+              required
+              autoComplete="current-password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />

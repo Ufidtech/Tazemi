@@ -261,9 +261,9 @@ export default function CEODashboard() {
         <div className="card mobile-card-tight">
           <div className="card-header">Active Alerts</div>
           {trucks
-            .filter((t) => t.status === "alert" || t.alerts.length > 0)
+            .filter((t) => t.status === "alert" || (t.alerts?.length ?? 0) > 0)
             .flatMap((t) =>
-              t.alerts.map((a) => ({ ...a, truck: t.id, agg: t.aggregator })),
+              (t.alerts ?? []).map((a) => ({ ...a, truck: t.id, agg: t.aggregator })),
             ).length === 0 ? (
             <div className="p-8 text-center text-gray-400 text-sm">
               No active alerts
@@ -271,9 +271,9 @@ export default function CEODashboard() {
           ) : (
             <div className="divide-y divide-gray-100">
               {trucks
-                .filter((t) => t.alerts.length > 0)
+                .filter((t) => (t.alerts?.length ?? 0) > 0)
                 .flatMap((t) =>
-                  t.alerts.map((a, i) => (
+                  (t.alerts ?? []).map((a, i) => (
                     <div
                       key={`${t.id}-${i}`}
                       className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-start gap-2.5 sm:gap-3"

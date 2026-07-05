@@ -23,8 +23,13 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Firebase is the source of truth for the session. If it reports
+    // signed-out, drop any stale localStorage session — otherwise a
+    // leftover entry keeps users "logged in" without authenticating.
+    // (In local/backend mode the subscriber passes the stored user
+    // through, so a valid stored session is never cleared there.)
     const unsubscribe = subscribeToFirebaseAuth((firebaseUser) => {
-      if (!firebaseUser && !getAuthUser()) {
+      if (!firebaseUser) {
         clearAuth();
         setUser(null);
       }
