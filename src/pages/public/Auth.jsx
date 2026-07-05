@@ -16,9 +16,14 @@ export default function Auth() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
+  });
+  const [resetForm, setResetForm] = useState({
+    tempPassword: "",
+    newPassword: "",
   });
 
   useEffect(() => {
@@ -47,10 +52,16 @@ export default function Auth() {
     setNotice("");
     setResetting(true);
     try {
-      const message = await resetPassword(form.email);
+      const message = await resetPassword({
+        email: form.email,
+        tempPassword: resetForm.tempPassword,
+        newPassword: resetForm.newPassword,
+      });
       setNotice(message);
+      setShowReset(false);
+      setResetForm({ tempPassword: "", newPassword: "" });
     } catch (err) {
-      setError(err.message || "Could not send reset email");
+      setError(err.message || "Could not reset password");
     } finally {
       setResetting(false);
     }
@@ -106,14 +117,65 @@ export default function Auth() {
               {loading ? "Logging in..." : "Login"}
             </button>
 
-            <button
-              type="button"
-              onClick={onForgotPassword}
-              disabled={resetting}
-              className="w-full text-sm text-gray-500 hover:text-teal transition disabled:opacity-60"
-            >
-              {resetting ? "Sending reset link..." : "Forgot password?"}
-            </button>
+            {showReset ? (
+              <div className="space-y-3 border-t pt-4">
+                <p className="text-sm text-gray-600">
+                  Forgot your password? Ask your CEO to generate a temporary
+                  password, then enter it below with your email to set a new
+                  password.
+                </p>
+                <input
+                  className="w-full border rounded-lg px-4 py-3"
+                  type="password"
+                  placeholder="Temporary password from CEO"
+                  autoComplete="one-time-code"
+                  value={resetForm.tempPassword}
+                  onChange={(e) =>
+                    setResetForm({ ...resetForm, tempPassword: e.target.value })
+                  }
+                />
+                <input
+                  className="w-full border rounded-lg px-4 py-3"
+                  type="password"
+                  placeholder="New password (min 6 chars)"
+                  autoComplete="new-password"
+                  value={resetForm.newPassword}
+                  onChange={(e) =>
+                    setResetForm({ ...resetForm, newPassword: e.target.value })
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  disabled={resetting}
+                  className="w-full bg-deep text-white py-3 rounded-lg font-semibold disabled:opacity-60"
+                >
+                  {resetting ? "Resetting password..." : "Reset password"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReset(false);
+                    setError("");
+                  }}
+                  className="w-full text-sm text-gray-500 hover:text-teal transition"
+                >
+                  Back to login
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReset(true);
+                  setError("");
+                  setNotice("");
+                }}
+                className="w-full text-sm text-gray-500 hover:text-teal transition"
+              >
+                Forgot password?
+              </button>
+            )}
           </form>
         )}
       </div>

@@ -13,7 +13,7 @@
  * on screen. Once the DB is seeded/live, the banner disappears.
  */
 
-import { ref, get } from "firebase/database";
+import { ref, get, set } from "firebase/database";
 import { database, isFirebaseConfigured } from "./firebaseClient";
 import * as api from "./api";
 import {
@@ -73,10 +73,45 @@ function toArray(value) {
   return [];
 }
 
+/* ------------------------------------------------------------------ */
+/* Seed-data visibility flag                                           */
+/* Priority: VITE_SHOW_SEED_DATA env (if set) → /config/show_seed_data */
+/* in RTDB → default true.                                             */
+/* true  → seeded records visible (demo-populated mode)                */
+/* false → seeded records hidden (production-clean mode)               */
+/* Toggle without deleting anything.                                   */
+/* ------------------------------------------------------------------ */
+
+const SEED_ENV = String(import.meta.env.VITE_SHOW_SEED_DATA ?? "").toLowerCase();
+
+let showSeedCache = null;
+
+async function showSeedData() {
+  // .env wins when explicitly set (requires dev-server restart / rebuild)
+  if (SEED_ENV === "true") return true;
+  if (SEED_ENV === "false") return false;
+  // otherwise the runtime DB flag decides
+  if (showSeedCache !== null) return showSeedCache;
+  const value = await fromDb("config/show_seed_data");
+  showSeedCache = value === null ? true : value === true;
+  return showSeedCache;
+}
+
+/** CEO-only (enforced by DB rules). Takes effect on next page load. */
+export async function setShowSeedData(enabled) {
+  await set(ref(database, "config/show_seed_data"), enabled === true);
+  showSeedCache = enabled === true;
+}
+
 async function resolveList(dbPath, apiFetcher, demoFallback) {
   const dbValue = await fromDb(dbPath);
-  const dbList = toArray(dbValue);
+  let dbList = toArray(dbValue);
   if (dbList.length) {
+    // Production-clean mode: drop seeded records but stay on the live
+    // source — an empty real collection is the truth, not a fallback.
+    if (!(await showSeedData())) {
+      dbList = dbList.filter((item) => item?.seeded !== true);
+    }
     reportSource("live");
     return dbList;
   }
@@ -144,6 +179,10 @@ export async function fetchDashboardSummary() {
   ]);
   if (kpis) {
     reportSource("live");
+    // Production-clean mode: seeded KPI snapshot hidden → zeros, not demo.
+    if (kpis.seeded === true && !(await showSeedData())) {
+      return { dashboard_kpis: {}, generated_at: null };
+    }
     return { dashboard_kpis: kpis, generated_at: generatedAt || null };
   }
 

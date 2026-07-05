@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@components";
-import { createStaffUser, fetchStaff } from "../../services/auth";
+import { createStaffUser, fetchStaff, generateTempPassword } from "../../services/auth";
 
 /**
  * StaffManagement (CEO only)
@@ -14,6 +14,8 @@ export default function StaffManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [tempResult, setTempResult] = useState(null); // { email, temp_password, expires_at }
+  const [tempLoadingUid, setTempLoadingUid] = useState(null);
 
   const loadStaff = () => {
     fetchStaff()
@@ -49,6 +51,21 @@ export default function StaffManagement() {
       setError(err.message || "Could not create staff account");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onGenerateTemp = async (member) => {
+    const uid = member.uid || member.id;
+    setError("");
+    setTempResult(null);
+    setTempLoadingUid(uid);
+    try {
+      const result = await generateTempPassword(uid);
+      setTempResult(result);
+    } catch (err) {
+      setError(err.message || "Could not generate temporary password");
+    } finally {
+      setTempLoadingUid(null);
     }
   };
 
@@ -114,6 +131,21 @@ export default function StaffManagement() {
 
         <div className="card p-6">
           <h2 className="text-xl font-black text-deep mb-4">Staff accounts</h2>
+          {tempResult && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+              Temporary password for <strong>{tempResult.email}</strong>:{" "}
+              <code className="font-mono font-bold">{tempResult.temp_password}</code>
+              <p className="text-xs mt-1">
+                Share it with the staff member — they enter it in “Forgot
+                password?” on the login page to set a new password. Shown only
+                once; expires{" "}
+                {tempResult.expires_at
+                  ? new Date(tempResult.expires_at).toLocaleString()
+                  : "in 24 hours"}
+                .
+              </p>
+            </div>
+          )}
           {staff.length === 0 ? (
             <p className="text-sm text-gray-400">No staff accounts yet.</p>
           ) : (
@@ -124,6 +156,7 @@ export default function StaffManagement() {
                     <th className="px-4 py-2 font-semibold">Name</th>
                     <th className="px-4 py-2 font-semibold">Email</th>
                     <th className="px-4 py-2 font-semibold">Role</th>
+                    <th className="px-4 py-2 font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -135,6 +168,18 @@ export default function StaffManagement() {
                         <span className="px-2 py-1 rounded-full text-xs font-semibold bg-teal/10 text-teal">
                           {s.role}
                         </span>
+                      </td>
+                      <td className="px-4 py-2">
+                        <button
+                          type="button"
+                          onClick={() => onGenerateTemp(s)}
+                          disabled={tempLoadingUid === (s.uid || s.id)}
+                          className="text-xs font-semibold text-teal hover:text-deep disabled:opacity-60 transition"
+                        >
+                          {tempLoadingUid === (s.uid || s.id)
+                            ? "Generating…"
+                            : "Generate temp password"}
+                        </button>
                       </td>
                     </tr>
                   ))}

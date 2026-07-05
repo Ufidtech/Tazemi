@@ -132,6 +132,11 @@
     "dashboard": {
       ".read": "auth != null",
       ".write": "auth != null && auth.token.role === 'CEO'"
+    },
+
+    "config": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.token.role === 'CEO'"
     }
   }
 }

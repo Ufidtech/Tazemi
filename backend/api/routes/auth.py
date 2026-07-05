@@ -17,7 +17,13 @@ from backend.auth import (
 )
 from backend.firebase import verify_id_token
 from backend.services.staff_service import authenticate
-from backend.services.user_service import create_staff_user, find_or_create_user, list_staff
+from backend.services.user_service import (
+    create_staff_user,
+    find_or_create_user,
+    generate_temp_password,
+    list_staff,
+    reset_password_with_temp,
+)
 
 
 class TokenTooEarlyError(HTTPException):
@@ -162,6 +168,42 @@ def create_staff(payload: dict = Body(default_factory=dict), actor=Depends(resol
     created = create_staff_user(email, password, name, role)
     audit_log("staff.create", actor, "users", {"email": email, "role": role})
     return created
+
+
+@router.post("/users/{uid}/temp-password")
+def create_temp_password(uid: str, actor=Depends(resolve_actor)):
+    """CEO generates a one-time temporary password for a staff member.
+
+    The plaintext is returned exactly once; the staff member uses it in the
+    "Forgot password" flow to set a new password.
+    """
+    if (actor.get("role") or "").lower() not in STAFF_ADMIN_ROLES:
+        raise HTTPException(status_code=403, detail="Only the CEO can generate temporary passwords")
+
+    result = generate_temp_password(uid)
+    if not result:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    audit_log("staff.temp_password", actor, "users", {"uid": uid, "email": result.get("email")})
+    return result
+
+
+@router.post("/password/reset")
+def reset_password(payload: dict = Body(default_factory=dict)):
+    """Reset a password using the CEO-generated temporary password."""
+    email = (payload.get("email") or "").strip()
+    temp_password = payload.get("temp_password") or ""
+    new_password = payload.get("new_password") or ""
+
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email is required")
+    if not temp_password:
+        raise HTTPException(status_code=400, detail="The temporary password from your CEO is required")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    result = reset_password_with_temp(email, temp_password, new_password)
+    audit_log("auth.password_reset", None, "auth", {"email": email})
+    return result
 
 
 @router.post("/signup")
