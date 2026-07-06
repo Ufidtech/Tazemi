@@ -21,6 +21,7 @@ dist-ssr
 .env
 backend/.env
 backend/service-account*.json
+backend/service-account.b64.txt
 **/serviceAccount*.json
 **/*firebase-adminsdk*.json
 

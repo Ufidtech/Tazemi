@@ -35,6 +35,7 @@ def initialize_firebase():
         return firebase_admin.get_app()
 
     service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON") or os.getenv("FIREBASE_CREDENTIALS_JSON")
+    service_account_b64 = os.getenv("FIREBASE_SERVICE_ACCOUNT_B64")
     service_account_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     database_url = os.getenv("FIREBASE_DATABASE_URL")
     project_id = os.getenv("FIREBASE_PROJECT_ID")
@@ -43,7 +44,20 @@ def initialize_firebase():
     if not database_url:
         raise FirebaseConfigurationError("FIREBASE_DATABASE_URL is required to initialize Firebase")
 
-    if service_account_json:
+    if service_account_b64:
+        # Base64 form survives portal/env-var paste without newline mangling.
+        # Takes precedence so a corrupted *_JSON value can be overridden
+        # without deleting it.
+        import base64
+
+        try:
+            service_account_info = json.loads(base64.b64decode(service_account_b64))
+            cred = credentials.Certificate(service_account_info)
+        except Exception as exc:  # noqa: BLE001
+            raise FirebaseConfigurationError(
+                "FIREBASE_SERVICE_ACCOUNT_B64 is not valid base64-encoded service-account JSON"
+            ) from exc
+    elif service_account_json:
         try:
             service_account_info = json.loads(service_account_json)
             cred = credentials.Certificate(service_account_info)
