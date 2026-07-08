@@ -118,7 +118,15 @@ export function Footer() {
     <footer className="bg-deep text-white mt-20">
       <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
-          <div className="text-teal font-black text-xl mb-2">TAZÉMI</div>
+          <Link to="/" className="flex items-center gap-2">
+            <img src={logo} alt="Tazémi" className="h-8 w-auto" />
+            <span className="text-teal font-black text-xl tracking-wide">
+              TAZÉMI
+            </span>
+            <span className="text-white/70 text-sm font-medium hidden sm:block">
+              AGRITECH
+            </span>
+          </Link>{" "}
           <p className="text-white/60 text-sm leading-relaxed">
             Preserving Nigeria's Harvest. Organic. Intelligent. Built for our
             infrastructure reality.
