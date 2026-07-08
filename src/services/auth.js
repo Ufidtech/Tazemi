@@ -29,12 +29,13 @@ function isProductionMode() {
 }
 
 async function request(path, options = {}) {
+  const { headers, ...rest } = options;
   const response = await fetch(`${API_BASE}${path}`, {
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(headers || {}),
     },
-    ...options,
   });
 
   if (!response.ok) {

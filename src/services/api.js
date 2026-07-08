@@ -5,12 +5,13 @@ function buildUrl(path) {
 }
 
 async function request(path, options = {}) {
+  const { headers, ...rest } = options;
   const response = await fetch(buildUrl(path), {
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...(headers || {}),
     },
-    ...options,
   });
 
   if (!response.ok) {
