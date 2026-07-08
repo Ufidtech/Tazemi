@@ -1,9 +1,8 @@
 import React from "react";
 import { Navbar, Footer, PageMeta } from "../../components";
-import { team } from "../../data/index.js";
 import content from "../../content";
 
-export default function Team() {
+export default function Impact() {
   return (
     <div>
       <PageMeta
@@ -16,14 +15,13 @@ export default function Team() {
       <section className="bg-deep text-white py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="section-label text-teal">
-            {content.teamContent.hero.label}
+            {content.impact.hero.label}
           </div>
-
           <h1 className="text-3xl sm:text-4xl font-black mb-4">
-            {content.teamContent.hero.title}
+            {content.impact.hero.title}
           </h1>
           <p className="text-white/70 text-lg">
-            {content.teamContent.hero.subtitle}
+            {content.impact.hero.subtitle}
           </p>
         </div>
       </section>
@@ -31,30 +29,40 @@ export default function Team() {
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {team.map((m) => (
-              <div key={m.name} className="card p-6 flex items-start gap-4">
-                <div
-                  className={`w-14 h-14 rounded-xl flex items-center justify-center font-black text-lg shrink-0 ${m.role.includes("Founder") ? "bg-deep text-teal" : "bg-mist text-deep"}`}
-                >
-                  {m.initials}
+            {content.impact.metrics.map((metric) => (
+              <div key={metric.label} className="card p-6">
+                <div className="text-xs uppercase tracking-wide text-teal font-semibold mb-2">
+                  {metric.category}
                 </div>
-                <div>
-                  <div className="font-bold text-deep">{m.name}</div>
-                  <div className="text-teal text-sm font-semibold mb-1">
-                    {m.role}
-                  </div>
-                  <div className="text-xs text-gray-400 mb-2 uppercase tracking-wide">
-                    {m.dept}
-                  </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {m.bio}
-                  </p>
+                <div className="text-3xl font-black text-deep mb-2">
+                  {metric.value}
                 </div>
+                <div className="text-gray-600 text-sm">{metric.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-mist">
+        <div className="max-w-4xl mx-auto">
+          <div className="section-label">SDG Alignment</div>
+          <h2 className="text-2xl font-bold text-deep mb-6">
+            Where the impact lands
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {content.impact.sdgs.map((sdg) => (
+              <div key={sdg.title} className="card p-6">
+                <div className="font-bold text-teal mb-2">{sdg.title}</div>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  {sdg.copy}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );

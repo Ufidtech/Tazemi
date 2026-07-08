@@ -64,8 +64,8 @@ export const home = {
         ["🔬", "Active R&D", "Bio-Shield BS-v1.2 achieving 17-day shelf life in trials"],
     ],
     teamPreview: [
-        { name: "Qamorudeen Oriade Ojo", role: "Founder & CEO · IoT Lead", bio: "Systems thinker building Tazémi's bio-digital architecture. IEEE member.", initials: "QO" },
-        { name: "Fatia Oriire Akintoye", role: "Co-Founder & CTO · Bio-Shield Lead", bio: "Food Science specialist driving formulation R&D. BS-v1.2: 17 days and counting.", initials: "FA" },
+        { name: "Qamorudeen Oriade Ojo", role: "Founder & CEO", bio: "Systems thinker building Tazémi's bio-digital architecture. IEEE member.", initials: "QO" },
+        { name: "Fatia Oriire Akintoye", role: "Head of Biotechnology", bio: "Food Science specialist driving formulation R&D. BS-v1.2: 17 days and counting.", initials: "FA" },
     ],
 };
 

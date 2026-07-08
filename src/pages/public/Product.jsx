@@ -102,26 +102,6 @@ export default function Product() {
         </div>
       </section>
 
-      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <div className="section-label">{content.product.iot.label}</div>
-          <h2 className="text-2xl font-bold text-deep mb-8">
-            {content.product.iot.title}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-            {content.product.iot.sensors.map((sensor) => (
-              <div key={sensor.title} className="card p-5">
-                <div className="text-2xl mb-2">{sensor.icon}</div>
-                <div className="font-bold text-deep text-sm mb-1">
-                  {sensor.title}
-                </div>
-                <p className="text-gray-500 text-xs">{sensor.copy}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-deep text-white">
         <div className="max-w-4xl mx-auto grid md:grid-cols-3 gap-8 text-center">
           {content.product.caas.values.map((item) => (
