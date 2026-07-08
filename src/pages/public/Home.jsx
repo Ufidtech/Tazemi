@@ -30,10 +30,12 @@ export default function Home() {
             />
           ))}
         </div>
+
         <div className="max-w-5xl mx-auto relative px-1 sm:px-0">
           <div className="inline-flex items-center gap-2 bg-teal/20 border border-teal/40 text-teal text-sm font-medium px-4 py-2 rounded-full mb-8">
             🏆 1st Place — WTP Green Sustainability Competition 2026
           </div>
+
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-tight mb-6">
             {content.home.hero.headline.split(". ")[0]}. <br />
             <span className="text-white/70">
@@ -41,18 +43,20 @@ export default function Home() {
                 "We built the solution."}
             </span>
           </h1>
+
           <p className="text-base sm:text-xl text-white/70 max-w-2xl mb-8 sm:mb-10 leading-relaxed">
             {content.home.hero.sub}
           </p>
+
           <div className="flex flex-col sm:flex-row flex-wrap gap-4">
             <Link
-              to="/dashboard"
+              to="/product"
               className="btn-primary text-base justify-center"
             >
-              {content.home.hero.ctaPrimary}
+              Explore Product
             </Link>
-            <Link to="/product" className="btn-white text-base justify-center">
-              {content.home.hero.ctaSecondary}
+            <Link to="/contact" className="btn-white text-base justify-center">
+              Contact Us
             </Link>
           </div>
         </div>
@@ -159,11 +163,11 @@ export default function Home() {
           <div>
             <h2 className="text-3xl font-bold mb-4">Explore the platform</h2>
             <p className="text-white/70 mb-6">
-              See the Bio-Shield coating operation, IoT monitoring, R&D trials,
-              and data analysis — all in one dashboard.
+              See the Bio-Shield coating operation, IoT monitoring, R&amp;D
+              trials, and data analysis — all in one dashboard.
             </p>
-            <Link to="/dashboard" className="btn-primary">
-              Open Dashboard →
+            <Link to="/contact" className="btn-primary">
+              Contact Us →
             </Link>
           </div>
           <div>
