@@ -1,6 +1,5 @@
 import React from "react";
 import { Navbar, Footer, PageMeta } from "../../components";
-// import { team } from "../../services/demoData";
 import { team } from "../../data/index.js";
 import content from "../../content";
 
@@ -8,21 +7,19 @@ export default function Team() {
   return (
     <div>
       <PageMeta
-        title={content.meta.team.title}
-        description={content.meta.team.description}
-        url={content.meta.team.url}
+        title={content.meta.impact.title}
+        description={content.meta.impact.description}
+        url={content.meta.impact.url}
       />
       <Navbar />
 
-            <section className="bg-deep text-white py-16 sm:py-20 px-4 sm:px-6">
-
+      <section className="bg-deep text-white py-16 sm:py-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <div className="section-label text-teal">
             {content.teamContent.hero.label}
           </div>
 
-                    <h1 className="text-3xl sm:text-4xl font-black mb-4">
-
+          <h1 className="text-3xl sm:text-4xl font-black mb-4">
             {content.teamContent.hero.title}
           </h1>
           <p className="text-white/70 text-lg">
@@ -31,12 +28,9 @@ export default function Team() {
         </div>
       </section>
 
-            <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
-
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-4xl mx-auto">
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {team.map((m) => (
               <div key={m.name} className="card p-6 flex items-start gap-4">
                 <div

@@ -1,6 +1,5 @@
 import React from "react";
-import { HashRouter, Routes, Route } from "react-router-dom";
-
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/public/Home";
 import About from "./pages/public/About";
 import Product from "./pages/public/Product";
@@ -24,7 +23,7 @@ import {
 
 export default function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
@@ -116,6 +115,6 @@ export default function App() {
           }
         />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
