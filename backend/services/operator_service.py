@@ -66,6 +66,7 @@ def create_operator(name: str, role: str, pin: str, created_by: str | None = Non
         "name": name,
         "role": role,
         "pin": _hash_pin(pin),
+        "status": "active",
         "created_by": created_by,
     }
     _repo.upsert(record)
@@ -91,9 +92,15 @@ def delete_operator(operator_id: str) -> bool:
 
 
 def verify_operator_pin(operator_id: str, pin: str):
-    """Return the operator (without pin) if the PIN matches, else None."""
+    """Return the operator (without pin) if the PIN matches, else None.
+
+    Deactivated operators (status "inactive") can never log in —
+    reactivate via PATCH {status: "active"} first.
+    """
     record = get_operator(operator_id, include_pin=True)
     if not record:
+        return None
+    if record.get("status") == "inactive":
         return None
     if _pin_matches(str(record.get("pin", "")), str(pin)):
         return _public(record)

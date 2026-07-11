@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, Depends, HTTPException
 
-from .routes import health, dashboard, trucks, batches, aggregators, trials, insights, auth, reports, notes, sensors, alerts, ingest, demo, crates, operators, pricing, scan_requests
+from .routes import health, dashboard, trucks, batches, aggregators, trials, insights, auth, reports, notes, sensors, alerts, ingest, demo, crates, operators, pricing, scan_requests, settings
 from backend.auth import audit_log, resolve_actor
 from backend.data.demo_data import DEMO_DATA
 from backend.services.registration_service import list_transactions, refund_transaction
@@ -24,6 +24,7 @@ api_router.include_router(crates.router, prefix="/crates", tags=["crates"])
 api_router.include_router(operators.router, prefix="/operators", tags=["operators"])
 api_router.include_router(pricing.router, prefix="/pricing", tags=["pricing"])
 api_router.include_router(scan_requests.router, prefix="/scan-requests", tags=["scan-requests"])
+api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(demo.router, tags=["demo"])
 
 
