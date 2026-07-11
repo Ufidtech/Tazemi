@@ -427,3 +427,160 @@ def topup_aggregator(aggregator_id: str, amount: float, created_by: str, method:
             raise HTTPException(status_code=500, detail="Failed to record top-up") from exc
 
     return {"aggregator": display_view(updated), "transactions": transactions}
+
+
+# --------------------------------------------------------------------------- #
+# Availability checks (§2.8 — advisory; uniqueness enforced at write time)
+# --------------------------------------------------------------------------- #
+def is_phone_available(phone: str) -> bool:
+    normalized = normalize_phone(phone)
+    records = _registrations.list() + _aggregators.list()
+    return not any(item.get("phone_number") == normalized for item in records)
+
+
+def is_rfid_available(rfid_uid: str) -> bool:
+    uid = (rfid_uid or "").strip().upper()
+    records = _registrations.list() + _aggregators.list()
+    return not any(item.get("rfid_uid") == uid for item in records)
+
+
+# --------------------------------------------------------------------------- #
+# Card replacement (§3.2 — fee deducted, aborts if balance < fee)
+# --------------------------------------------------------------------------- #
+def replace_card(aggregator_id: str, new_uid: str, created_by: str) -> dict:
+    uid = (new_uid or "").strip().upper()
+    if not re.fullmatch(r"[0-9A-F]{8}", uid):
+        raise HTTPException(status_code=400, detail="RFID UID must be exactly 8 uppercase hex characters")
+    if not is_rfid_available(uid):
+        raise HTTPException(status_code=409, detail="This RFID card is already assigned to another aggregator")
+
+    with _id_lock:
+        record = _registrations.get(aggregator_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Aggregator not found")
+
+        balance = float(record.get("balance", 0) or 0)
+        if balance < CARD_FEE:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Insufficient balance for card replacement fee ({CARD_FEE}). Collect cash and top up first.",
+            )
+
+        old_uid = record.get("rfid_uid")
+        timestamp = _now()
+        new_balance = balance - CARD_FEE
+
+        fee_txn = {
+            "id": uuid4().hex,
+            "transaction_id": uuid4().hex,
+            "aggregator_id": aggregator_id,
+            "type": "CARD_FEE",
+            "amount": CARD_FEE,
+            "balance_before": balance,
+            "balance_after": new_balance,
+            "method": "cash",
+            "note": f"Card replacement — old UID {old_uid}",
+            "created_by": created_by,
+            "created_at": timestamp,
+            "metadata": {"source": "card_replacement", "old_uid": old_uid},
+        }
+
+        updated = {**record, "rfid_uid": uid, "balance": new_balance, "updated_at": timestamp}
+        _registrations.upsert(updated)
+        try:
+            _transactions.upsert(fee_txn)
+        except Exception as exc:
+            _registrations.upsert(record)  # revert
+            raise HTTPException(status_code=500, detail="Failed to record card replacement") from exc
+
+        if get_service_mode() == "firebase":
+            # Keep the RTDB rfid_index in sync for direct-DB consumers.
+            try:
+                multi_location_update({
+                    f"rfid_index/{old_uid}": None,
+                    f"rfid_index/{uid}": aggregator_id,
+                })
+            except Exception:
+                pass  # index is advisory; registration record is authoritative
+
+    return {"newUid": uid, "oldUid": old_uid, "aggregator": display_view(updated)}
+
+
+# --------------------------------------------------------------------------- #
+# Account status (§3.2 — CEO only, enforced at the route)
+# --------------------------------------------------------------------------- #
+_VALID_STATUSES = {"ACTIVE", "SUSPENDED", "INACTIVE"}
+
+
+def set_account_status(aggregator_id: str, status: str, reason: str | None, actor_id: str) -> dict:
+    status = (status or "").upper()
+    if status not in _VALID_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid account status: {status}")
+    if status == "SUSPENDED" and not (reason or "").strip():
+        raise HTTPException(status_code=400, detail="A reason is required to suspend an account")
+
+    with _id_lock:
+        record = _registrations.get(aggregator_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Aggregator not found")
+        updated = {
+            **record,
+            "account_status": status,
+            "status": status.lower(),
+            "status_changed_at": _now(),
+            "status_changed_by": actor_id,
+            "status_reason": (reason or "").strip() or None,
+            "updated_at": _now(),
+        }
+        _registrations.upsert(updated)
+    return display_view(updated)
+
+
+# --------------------------------------------------------------------------- #
+# Refund (§3.2 — CEO only, atomic reverse write)
+# --------------------------------------------------------------------------- #
+def refund_transaction(original_txn_id: str, actor_id: str, reason: str) -> dict:
+    if not (reason or "").strip():
+        raise HTTPException(status_code=400, detail="A reason is required for refunds")
+
+    with _id_lock:
+        original = _transactions.get(original_txn_id) or next(
+            (t for t in _transactions.list() if t.get("transaction_id") == original_txn_id), None
+        )
+        if not original:
+            raise HTTPException(status_code=404, detail="Original transaction not found")
+
+        aggregator_id = original.get("aggregator_id")
+        record = _registrations.get(aggregator_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Aggregator not found")
+
+        credit = abs(float(original.get("amount", 0) or 0))
+        balance_before = float(record.get("balance", 0) or 0)
+        balance_after = balance_before + credit
+        timestamp = _now()
+
+        refund_txn = {
+            "id": uuid4().hex,
+            "transaction_id": uuid4().hex,
+            "aggregator_id": aggregator_id,
+            "type": "REFUND",
+            "amount": credit,
+            "balance_before": balance_before,
+            "balance_after": balance_after,
+            "method": original.get("method", "cash"),
+            "note": f"Refund of {original_txn_id}: {reason.strip()}",
+            "created_by": actor_id,
+            "created_at": timestamp,
+            "metadata": {"source": "refund", "original_txn_id": original_txn_id},
+        }
+
+        updated = {**record, "balance": balance_after, "updated_at": timestamp}
+        _registrations.upsert(updated)
+        try:
+            _transactions.upsert(refund_txn)
+        except Exception as exc:
+            _registrations.upsert(record)  # revert
+            raise HTTPException(status_code=500, detail="Failed to record refund") from exc
+
+    return {"refundTxnId": refund_txn["transaction_id"], "balanceAfter": balance_after}

@@ -100,6 +100,21 @@ const formulas = [
   { formula_id: "BIO-004", name: "Bio-Shield BS-v1.3", date_created: "2026-06-01", notes: "Increased starch (2.5%) for humid routes — trial ongoing", active: true },
 ];
 
+/* Crates (/crates — TZ-KN-001 format) */
+const crates = [
+  { crate_id: "TZ-KN-001", grade: "A", status: "available", current_aggregator_id: null, current_batch_ref: null, assigned_date: null, dispatch_date: null, return_date: null, condition: "serviceable" },
+  { crate_id: "TZ-KN-002", grade: "A", status: "in_use", current_aggregator_id: "AGG-001", current_batch_ref: "KN-20260710-001", assigned_date: now - 86400000, dispatch_date: null, return_date: null, condition: "serviceable" },
+  { crate_id: "TZ-KN-003", grade: "B", status: "dispatched", current_aggregator_id: "AGG-001", current_batch_ref: "KN-20260709-002", assigned_date: now - 2 * 86400000, dispatch_date: now - 86400000, return_date: null, condition: "serviceable" },
+  { crate_id: "TZ-KN-004", grade: "C", status: "returned", current_aggregator_id: null, current_batch_ref: null, assigned_date: now - 5 * 86400000, dispatch_date: now - 4 * 86400000, return_date: now - 86400000, condition: "serviceable" },
+  { crate_id: "TZ-KN-005", grade: "D", status: "damaged", current_aggregator_id: null, current_batch_ref: null, assigned_date: null, dispatch_date: null, return_date: null, condition: "damaged" },
+];
+
+/* Operators (/operators — OP-KN-001 format; PIN is demo-only) */
+const operators = [
+  { operator_id: "OP-KN-001", name: "Demo Field Operator", role: "FIELD_OPERATOR", pin: "1234" },
+  { operator_id: "OP-KN-002", name: "Demo CEO", role: "CEO", pin: "9999" },
+];
+
 function buildSeedPayload() {
   const updates = {};
 
@@ -116,6 +131,10 @@ function buildSeedPayload() {
     updates["counters/formulas"] = formulas.length;
     void i;
   });
+  crates.forEach((c) => (updates[`crates/${c.crate_id}`] = { ...c, ...SEED }));
+  updates["counters/crates"] = crates.length;
+  operators.forEach((o) => (updates[`operators/${o.operator_id}`] = { ...o, ...SEED }));
+  updates["counters/operators"] = operators.length;
 
   // Dashboard KPI snapshot (read by fetchDashboardSummary)
   updates["dashboard/kpis"] = { ...kpis, ...SEED };
@@ -155,6 +174,7 @@ function buildSeedPayload() {
 
 const PURGE_PATHS = [
   "aggregators", "batches", "trucks", "trials", "activity", "formulas",
+  "crates", "operators",
 ];
 
 async function purgeSeeded() {

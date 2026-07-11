@@ -1,40 +1,20 @@
 /**
- * tazemiDb.js — Firebase RTDB service layer (PRD v2.1)
+ * tazemiDb.js — thin API client for the Tazémi FastAPI backend (PRD v2.1)
  *
- * Implements the resolved data-integrity rules:
- * - Race-safe ID allocation via RTDB transactions on /counters   (§2.1)
- * - Phone + RFID uniqueness via /phone_index and /rfid_index     (§2.8)
- * - Atomic multi-path registration write (aggregator + indexes
- *   + TOPUP + CARD_FEE transactions in one update)               (§3.1)
- * - Top-up with card-fee safety net for legacy accounts          (§3.2)
- * - Card replacement fee as a conditional transaction that
- *   aborts if balance < fee at commit time                       (§3.2)
- * - CEO-only refund with atomic reverse write                    (§3.2)
- * - Pricing updates with changelog                               (§3.4)
- * - Scan-request archival to /scan_request_log (never bare
- *   delete)                                                      (§2.6)
+ * All business logic (ID allocation, uniqueness enforcement, atomic
+ * multi-path writes, NIN/BVN encryption, photo storage, fee handling,
+ * refunds, pricing changelogs, scan-request archival) lives in the
+ * backend. This module only:
+ *   - attaches the Firebase ID token to each request
+ *   - maps UI-friendly signatures onto the REST endpoints
+ *   - keeps pure display helpers (phone normalization, masking)
  *
- * NOTE on NIN/BVN (§6.2): full KMS encryption requires the
- * `registerAggregator` Cloud Function. Until it is deployed, this
- * client stores ONLY the masked value (last 4 digits) and never
- * persists the raw number.
+ * Real-time flows (scan-request listeners, device heartbeats) stay on
+ * Firebase client listeners — see useRFIDScan / useDeviceStatus.
  */
 
-import {
-  ref,
-  update,
-  get,
-  push,
-  remove,
-  runTransaction,
-  serverTimestamp,
-} from "firebase/database";
-import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
-import { database, storage } from "./firebaseClient";
+import { auth } from "./firebaseClient";
+import { DEFAULT_API_BASE_URL } from "./api";
 
 export const CARD_FEE = 1000;
 export const MIN_INITIAL_TOPUP = 5000;
@@ -59,54 +39,58 @@ export function maskIdentity(ninOrBvn) {
   return `${"*".repeat(Math.max(0, s.length - 4))}${s.slice(-4)}`;
 }
 
-/** Dashboard transaction ID: TXN-DASH-{operator_uid_short}-{millis} (§2.3). */
-function dashTxnId(operatorId) {
-  const shortId = String(operatorId || "unknown").slice(0, 8);
-  return `TXN-DASH-${shortId}-${Date.now()}`;
+/* ------------------------------------------------------------------ */
+/* Authenticated request helper                                        */
+/* ------------------------------------------------------------------ */
+
+async function authHeaders() {
+  const token = await auth?.currentUser?.getIdToken().catch(() => null);
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function isTestAggregator(aggregatorId) {
-  return String(aggregatorId).startsWith("AGG-T");
+async function apiRequest(path, { method = "GET", body, formData } = {}) {
+  const headers = await authHeaders();
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+
+  const response = await fetch(`${DEFAULT_API_BASE_URL}${path}`, {
+    method,
+    headers,
+    body: formData ?? (body !== undefined ? JSON.stringify(body) : undefined),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const err = new Error(
+      errorData.detail || errorData.message || `Request failed (${response.status})`,
+    );
+    err.httpStatus = response.status;
+    throw err;
+  }
+
+  const payload = await response.json().catch(() => null);
+  return payload?.data ?? payload;
 }
 
 /* ------------------------------------------------------------------ */
-/* ID allocation (§2.1 — race-safe counter transaction)                */
-/* ------------------------------------------------------------------ */
-
-export async function allocateAggregatorId({ isTest = false } = {}) {
-  const counterPath = isTest ? "counters/aggregators_test" : "counters/aggregators";
-  const result = await runTransaction(ref(database, counterPath), (n) => (n || 0) + 1);
-  if (!result.committed) throw new Error("Could not allocate aggregator ID");
-  const seq = String(result.snapshot.val()).padStart(3, "0");
-  return isTest ? `AGG-T${seq}` : `AGG-${seq}`;
-}
-
-/* ------------------------------------------------------------------ */
-/* Uniqueness checks (§2.8 — advisory; rules enforce no-overwrite)     */
+/* Uniqueness checks (§2.8 — advisory; backend enforces at write time) */
 /* ------------------------------------------------------------------ */
 
 export async function isPhoneAvailable(phone) {
-  const snap = await get(ref(database, `phone_index/${normalizePhone(phone)}`));
-  return !snap.exists();
+  const result = await apiRequest(
+    `/aggregators/availability/phone?phone=${encodeURIComponent(normalizePhone(phone))}`,
+  );
+  return result?.available === true;
 }
 
 export async function isRfidAvailable(uid) {
-  const snap = await get(ref(database, `rfid_index/${String(uid).toUpperCase()}`));
-  return !snap.exists();
+  const result = await apiRequest(
+    `/aggregators/availability/rfid?uid=${encodeURIComponent(String(uid).toUpperCase())}`,
+  );
+  return result?.available === true;
 }
 
 /* ------------------------------------------------------------------ */
-/* Photo upload (§3.1 — aggregator-photos/{id}.jpg)                    */
-/* ------------------------------------------------------------------ */
-
-export async function uploadAggregatorPhoto(aggregatorId, file) {
-  const photoRef = storageRef(storage, `aggregator-photos/${aggregatorId}.jpg`);
-  await uploadBytes(photoRef, file, { contentType: file.type || "image/jpeg" });
-  return getDownloadURL(photoRef);
-}
-
-/* ------------------------------------------------------------------ */
-/* Registration (§3.1 — one atomic multi-path write)                   */
+/* Registration (§3.1 — backend: encryption, photo, atomic write)      */
 /* ------------------------------------------------------------------ */
 
 export async function registerAggregator({
@@ -118,335 +102,105 @@ export async function registerAggregator({
   rfidUid,
   initialTopUp,
   operatorId,
-  isTest = false,
   scanSessionId = null,
 }) {
-  const phone = normalizePhone(phoneNumber);
-  const uid = String(rfidUid).toUpperCase();
-  const amount = Number(initialTopUp);
+  const formData = new FormData();
+  formData.append("full_name", fullName);
+  formData.append("phone_number", phoneNumber);
+  formData.append("market_location", marketLocation);
+  formData.append("nin_or_bvn", ninOrBvn);
+  formData.append("rfid_uid", String(rfidUid).toUpperCase());
+  formData.append("initial_topup", Number(initialTopUp));
+  formData.append("created_by", operatorId || "unknown");
+  if (photoFile) formData.append("photo", photoFile);
 
-  if (amount < MIN_INITIAL_TOPUP) {
-    throw new Error(`Initial top-up must be at least \u20A6${MIN_INITIAL_TOPUP.toLocaleString()}`);
-  }
-  if (!(await isPhoneAvailable(phone))) {
-    throw new Error("An aggregator with this phone number already exists");
-  }
-  if (!(await isRfidAvailable(uid))) {
-    throw new Error("This RFID card is already assigned to another aggregator");
-  }
-
-  const aggregatorId = await allocateAggregatorId({ isTest });
-  const photoUrl = photoFile ? await uploadAggregatorPhoto(aggregatorId, photoFile) : "";
-  const now = Date.now();
-  const balance = amount - CARD_FEE;
-
-  const topupTxnId = `${dashTxnId(operatorId)}-T`;
-  const feeTxnId = `${dashTxnId(operatorId)}-F`;
-
-  const updates = {
-    [`aggregators/${aggregatorId}`]: {
-      aggregator_id: aggregatorId,
-      full_name: fullName.trim(),
-      phone_number: phone,
-      market_location: marketLocation,
-      nin_or_bvn_masked: maskIdentity(ninOrBvn),
-      photo_url: photoUrl,
-      rfid_uid: uid,
-      balance,
-      account_status: "ACTIVE",
-      card_fee_paid: true,
-      total_batches: 0,
-      total_crates_coated: 0,
-      last_active: now,
-      registered_at: now,
-      registered_by: operatorId,
-    },
-    [`phone_index/${phone}`]: aggregatorId,
-    [`rfid_index/${uid}`]: aggregatorId,
-    [`transactions/${topupTxnId}`]: {
-      transaction_id: topupTxnId,
-      aggregator_id: aggregatorId,
-      batch_id: null,
-      is_test: isTest,
-      type: "TOPUP",
-      amount,
-      balance_before: 0,
-      balance_after: amount,
-      method: "CASH",
-      timestamp: now,
-      operator_id: operatorId,
-      stale_rate: false,
-      note: "First top-up",
-    },
-    [`transactions/${feeTxnId}`]: {
-      transaction_id: feeTxnId,
-      aggregator_id: aggregatorId,
-      batch_id: null,
-      is_test: isTest,
-      type: "CARD_FEE",
-      amount: -CARD_FEE,
-      balance_before: amount,
-      balance_after: balance,
-      method: "CASH",
-      timestamp: now,
-      operator_id: operatorId,
-      stale_rate: false,
-      note: "Card fee — registration",
-    },
-  };
-
-  await update(ref(database), updates);
+  const aggregator = await apiRequest("/aggregators/register", {
+    method: "POST",
+    formData,
+  });
 
   // §2.6: archive the scan request after the UID is saved.
   if (scanSessionId) {
     await archiveScanRequest(scanSessionId).catch(() => {});
   }
 
-  return {
-    id: aggregatorId,
-    aggregator_id: aggregatorId,
-    name: fullName.trim(),
-    full_name: fullName.trim(),
-    balance,
-    rfid_uid: uid,
-    phoneNumber: phone,
-    marketLocation,
-    registered_at: now,
-  };
+  return aggregator;
 }
 
 /* ------------------------------------------------------------------ */
-/* Top-up (§3.2 — transaction on aggregator + card-fee safety net)     */
+/* Top-up (§3.2 — backend: balance transaction + card-fee safety net)  */
 /* ------------------------------------------------------------------ */
 
-export async function topUpAggregator({ aggregatorId, amount, method = "CASH", note = "", operatorId }) {
-  const topUp = Number(amount);
-  if (topUp < MIN_TOPUP) {
-    throw new Error(`Minimum top-up is \u20A6${MIN_TOPUP.toLocaleString()}`);
-  }
-
-  let ctx = null;
-  const result = await runTransaction(ref(database, `aggregators/${aggregatorId}`), (agg) => {
-    if (agg === null) return agg; // node missing — resolves as not committed on data load
-    const balanceBefore = agg.balance || 0;
-    const feeDue = agg.card_fee_paid === false; // legacy/admin-imported accounts only (§3.2 step 5)
-    const fee = feeDue ? CARD_FEE : 0;
-    ctx = { balanceBefore, feeDue };
-    agg.balance = balanceBefore + topUp - fee;
-    agg.card_fee_paid = true;
-    agg.last_active = Date.now();
-    return agg;
+export async function topUpAggregator({ aggregatorId, amount, method = "cash", note = "" }) {
+  const result = await apiRequest(`/aggregators/${aggregatorId}/topup`, {
+    method: "POST",
+    body: { amount: Number(amount), method, note },
   });
-
-  if (!result.committed || !ctx) throw new Error("Top-up failed — aggregator not found");
-
-  const now = Date.now();
-  const isTest = isTestAggregator(aggregatorId);
-  const topupTxnId = `${dashTxnId(operatorId)}-T`;
-  const records = {
-    [`transactions/${topupTxnId}`]: {
-      transaction_id: topupTxnId,
-      aggregator_id: aggregatorId,
-      batch_id: null,
-      is_test: isTest,
-      type: "TOPUP",
-      amount: topUp,
-      balance_before: ctx.balanceBefore,
-      balance_after: ctx.balanceBefore + topUp,
-      method,
-      timestamp: now,
-      operator_id: operatorId,
-      stale_rate: false,
-      note,
-    },
-  };
-
-  if (ctx.feeDue) {
-    const feeTxnId = `${dashTxnId(operatorId)}-F`;
-    records[`transactions/${feeTxnId}`] = {
-      transaction_id: feeTxnId,
-      aggregator_id: aggregatorId,
-      batch_id: null,
-      is_test: isTest,
-      type: "CARD_FEE",
-      amount: -CARD_FEE,
-      balance_before: ctx.balanceBefore + topUp,
-      balance_after: ctx.balanceBefore + topUp - CARD_FEE,
-      method,
-      timestamp: now,
-      operator_id: operatorId,
-      stale_rate: false,
-      note: "Card fee — deducted from first top-up (legacy account)",
-    };
-  }
-
-  await update(ref(database), records);
-  return { balanceAfter: result.snapshot.val().balance };
+  return { balanceAfter: result?.aggregator?.balance, ...result };
 }
 
 /* ------------------------------------------------------------------ */
-/* Card replacement (§3.2 — conditional transaction, aborts if         */
-/* balance < fee at commit time; UI pre-check is advisory only)        */
+/* Card replacement (§3.2 — backend aborts if balance < fee)           */
 /* ------------------------------------------------------------------ */
 
-export async function replaceCard({ aggregatorId, newUid, operatorId }) {
-  const uid = String(newUid).toUpperCase();
-  if (!(await isRfidAvailable(uid))) {
-    throw new Error("This RFID card is already assigned to another aggregator");
-  }
-
-  let ctx = null;
-  const result = await runTransaction(ref(database, `aggregators/${aggregatorId}`), (agg) => {
-    if (agg === null) return agg;
-    const balanceBefore = agg.balance || 0;
-    if (balanceBefore < CARD_FEE) return undefined; // ABORT — insufficient at commit time
-    ctx = { balanceBefore, oldUid: agg.rfid_uid };
-    agg.balance = balanceBefore - CARD_FEE;
-    agg.rfid_uid = uid;
-    agg.last_active = Date.now();
-    return agg;
-  });
-
-  if (!result.committed || !ctx) {
-    throw new Error(`Insufficient balance for card replacement fee (\u20A6${CARD_FEE.toLocaleString()}). Collect cash and top up first.`);
-  }
-
-  const now = Date.now();
-  const feeTxnId = `${dashTxnId(operatorId)}-R`;
-  await update(ref(database), {
-    [`rfid_index/${ctx.oldUid}`]: null,
-    [`rfid_index/${uid}`]: aggregatorId,
-    [`transactions/${feeTxnId}`]: {
-      transaction_id: feeTxnId,
-      aggregator_id: aggregatorId,
-      batch_id: null,
-      is_test: isTestAggregator(aggregatorId),
-      type: "CARD_FEE",
-      amount: -CARD_FEE,
-      balance_before: ctx.balanceBefore,
-      balance_after: ctx.balanceBefore - CARD_FEE,
-      method: "CASH",
-      timestamp: now,
-      operator_id: operatorId,
-      stale_rate: false,
-      note: `Card replacement — old UID ${ctx.oldUid}`,
-    },
-  });
-
-  return { newUid: uid, oldUid: ctx.oldUid };
-}
-
-/* ------------------------------------------------------------------ */
-/* Account status (§3.2 — CEO only, enforced by security rules)        */
-/* ------------------------------------------------------------------ */
-
-export async function setAccountStatus({ aggregatorId, status, reason, actorId }) {
-  if (!["ACTIVE", "SUSPENDED", "INACTIVE"].includes(status)) {
-    throw new Error(`Invalid account status: ${status}`);
-  }
-  if (status === "SUSPENDED" && !reason) {
-    throw new Error("A reason is required to suspend an account");
-  }
-  await update(ref(database, `aggregators/${aggregatorId}`), {
-    account_status: status,
-    status_changed_at: Date.now(),
-    status_changed_by: actorId,
-    status_reason: reason || null,
+export async function replaceCard({ aggregatorId, newUid }) {
+  return apiRequest(`/aggregators/${aggregatorId}/replace-card`, {
+    method: "POST",
+    body: { new_uid: String(newUid).toUpperCase() },
   });
 }
 
 /* ------------------------------------------------------------------ */
-/* Refund (§3.2 — CEO only, atomic reverse write)                      */
+/* Account status (§3.2 — CEO only, enforced by the backend)           */
 /* ------------------------------------------------------------------ */
 
-export async function refundTransaction({ originalTxnId, actorId, reason }) {
-  if (!reason) throw new Error("A reason is required for refunds");
-
-  const snap = await get(ref(database, `transactions/${originalTxnId}`));
-  if (!snap.exists()) throw new Error("Original transaction not found");
-  const original = snap.val();
-  const creditAmount = Math.abs(original.amount);
-
-  let ctx = null;
-  const result = await runTransaction(
-    ref(database, `aggregators/${original.aggregator_id}`),
-    (agg) => {
-      if (agg === null) return agg;
-      ctx = { balanceBefore: agg.balance || 0 };
-      agg.balance = (agg.balance || 0) + creditAmount;
-      agg.last_active = Date.now();
-      return agg;
-    },
-  );
-  if (!result.committed || !ctx) throw new Error("Refund failed — aggregator not found");
-
-  const refundTxnId = `${dashTxnId(actorId)}-RF`;
-  await update(ref(database), {
-    [`transactions/${refundTxnId}`]: {
-      transaction_id: refundTxnId,
-      aggregator_id: original.aggregator_id,
-      batch_id: original.batch_id || null,
-      is_test: isTestAggregator(original.aggregator_id),
-      type: "REFUND",
-      amount: creditAmount,
-      balance_before: ctx.balanceBefore,
-      balance_after: ctx.balanceBefore + creditAmount,
-      method: original.method || "CASH",
-      timestamp: Date.now(),
-      operator_id: actorId,
-      stale_rate: false,
-      note: `Refund of ${originalTxnId}: ${reason}`,
-    },
-  });
-  return { refundTxnId };
-}
-
-/* ------------------------------------------------------------------ */
-/* Pricing (§3.4 — CEO only; update + changelog in one write)          */
-/* ------------------------------------------------------------------ */
-
-export async function updatePricing({ activeRate, season, actorId }) {
-  const snap = await get(ref(database, "pricing/current"));
-  const current = snap.exists() ? snap.val() : {};
-  const now = Date.now();
-  const changelogKey = push(ref(database, "pricing/changelog")).key;
-
-  await update(ref(database), {
-    "pricing/current/active_rate": Number(activeRate),
-    "pricing/current/current_season": season,
-    "pricing/current/last_updated": serverTimestamp(),
-    "pricing/current/updated_by": actorId,
-    [`pricing/changelog/${changelogKey}`]: {
-      timestamp: now,
-      changed_by: actorId,
-      old_rate: current.active_rate ?? null,
-      new_rate: Number(activeRate),
-      old_season: current.current_season ?? null,
-      new_season: season,
-    },
+export async function setAccountStatus({ aggregatorId, status, reason }) {
+  return apiRequest(`/aggregators/${aggregatorId}/status`, {
+    method: "POST",
+    body: { status, reason: reason || null },
   });
 }
 
 /* ------------------------------------------------------------------ */
-/* Scan request archival (§2.6 — copy to log + delete, one write)      */
+/* Refund (§3.2 — CEO only, atomic reverse write in the backend)       */
+/* ------------------------------------------------------------------ */
+
+export async function refundTransaction({ originalTxnId, reason }) {
+  return apiRequest(`/transactions/${originalTxnId}/refund`, {
+    method: "POST",
+    body: { reason },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Pricing (§3.4 — CEO only; backend writes update + changelog)        */
+/* ------------------------------------------------------------------ */
+
+export async function updatePricing({ activeRate, season }) {
+  return apiRequest("/pricing/current", {
+    method: "PUT",
+    body: { active_rate: Number(activeRate), season },
+  });
+}
+
+export async function fetchPricing() {
+  return apiRequest("/pricing/current");
+}
+
+/* ------------------------------------------------------------------ */
+/* Scan request archival (§2.6 — backend owns terminal operations)     */
 /* ------------------------------------------------------------------ */
 
 export async function archiveScanRequest(sessionId) {
-  const snap = await get(ref(database, `scan_requests/${sessionId}`));
-  if (!snap.exists()) return;
-  await update(ref(database), {
-    [`scan_request_log/${sessionId}`]: snap.val(),
-    [`scan_requests/${sessionId}`]: null,
-  });
+  return apiRequest(`/scan-requests/${sessionId}/archive`, { method: "POST" });
 }
 
 /** Dashboard-side expiry (§2.6 — 65s safety net, then archive). */
 export async function expireScanRequest(sessionId) {
-  await update(ref(database, `scan_requests/${sessionId}`), { status: "EXPIRED" }).catch(() => {});
-  await archiveScanRequest(sessionId);
+  return apiRequest(`/scan-requests/${sessionId}/expire`, { method: "POST" });
 }
 
 /** Remove a cancelled scan request without archiving noise. */
 export async function deleteScanRequest(sessionId) {
-  await remove(ref(database, `scan_requests/${sessionId}`));
+  return apiRequest(`/scan-requests/${sessionId}`, { method: "DELETE" });
 }

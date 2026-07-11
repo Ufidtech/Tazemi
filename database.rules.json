@@ -32,6 +32,32 @@
       }
     },
 
+    "crates": {
+      ".read": "auth != null",
+      ".indexOn": ["status", "grade", "current_aggregator_id", "current_batch_ref"],
+      "$crate_id": {
+        ".write": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR' || auth.token.role === 'device')",
+        "grade": {
+          ".validate": "newData.val() === 'A' || newData.val() === 'B' || newData.val() === 'C' || newData.val() === 'D'"
+        },
+        "status": {
+          ".validate": "newData.val() === 'available' || newData.val() === 'in_use' || newData.val() === 'dispatched' || newData.val() === 'returned' || newData.val() === 'damaged' || newData.val() === 'lost'"
+        },
+        "condition": {
+          ".validate": "newData.val() === 'serviceable' || newData.val() === 'damaged' || newData.val() === 'lost'"
+        }
+      }
+    },
+
+    "operators": {
+      ".read": "auth != null && (auth.token.role === 'CEO' || auth.token.role === 'FIELD_OPERATOR' || auth.token.role === 'device')",
+      ".indexOn": ["role"],
+      "$operator_id": {
+        ".write": "auth != null && auth.token.role === 'CEO'",
+        ".validate": "data.exists() || newData.hasChildren(['operator_id', 'name', 'role', 'pin'])"
+      }
+    },
+
     "phone_index": {
       ".read": "auth != null",
       "$phone": {

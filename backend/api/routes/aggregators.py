@@ -6,9 +6,13 @@ from backend.models import AggregatorCreate, AggregatorPatch
 from backend.services.aggregator_service import create_aggregator, delete_aggregator, get_aggregator_by_id, list_aggregators, update_aggregator
 from backend.services.registration_service import (
     get_registration,
+    is_phone_available,
+    is_rfid_available,
     list_registrations,
     list_transactions,
     register_aggregator,
+    replace_card,
+    set_account_status,
     topup_aggregator,
     update_registration,
 )
@@ -59,6 +63,16 @@ async def register(
     return result
 
 
+@router.get("/availability/phone")
+def check_phone(phone: str):
+    return {"available": is_phone_available(phone)}
+
+
+@router.get("/availability/rfid")
+def check_rfid(uid: str):
+    return {"available": is_rfid_available(uid)}
+
+
 @router.get("/{aggregator_id}")
 def read_aggregator(aggregator_id: str):
     aggregator = next((item for item in DEMO_DATA.get("aggregators", []) if item.get("id") == aggregator_id), None)
@@ -79,6 +93,25 @@ def topup(aggregator_id: str, payload: dict = Body(default_factory=dict), user=D
     note = payload.get("note", "")
     result = topup_aggregator(aggregator_id, amount, user.get("uid") or payload.get("created_by"), method=method, note=note)
     audit_log("aggregator.topup", user, "aggregators", {"id": aggregator_id, "amount": amount, "method": method})
+    return result
+
+
+@router.post("/{aggregator_id}/replace-card")
+def card_replacement(aggregator_id: str, payload: dict = Body(default_factory=dict), user=Depends(resolve_actor)):
+    role = (user.get("role") or "").lower()
+    if role not in ALLOWED_REGISTRATION_ROLES:
+        raise HTTPException(status_code=403, detail="Insufficient role")
+    result = replace_card(aggregator_id, payload.get("new_uid"), user.get("uid"))
+    audit_log("aggregator.replace_card", user, "aggregators", {"id": aggregator_id})
+    return result
+
+
+@router.post("/{aggregator_id}/status")
+def account_status(aggregator_id: str, payload: dict = Body(default_factory=dict), user=Depends(resolve_actor)):
+    if (user.get("role") or "").lower() != "ceo":
+        raise HTTPException(status_code=403, detail="Only the CEO can change account status")
+    result = set_account_status(aggregator_id, payload.get("status"), payload.get("reason"), user.get("uid"))
+    audit_log("aggregator.status", user, "aggregators", {"id": aggregator_id, "status": payload.get("status")})
     return result
 
 

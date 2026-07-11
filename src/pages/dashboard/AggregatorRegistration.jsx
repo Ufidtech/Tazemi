@@ -5,25 +5,20 @@ import RFIDScanModal from "./components/RFIDScanModal";
 import SuccessScreen from "./components/SuccessScreen";
 import { useRFIDScan } from "../../hooks/useRFIDScan";
 import { useDeviceStatus } from "../../hooks/useDeviceStatus";
-import { registerAggregator, isRfidAvailable, archiveScanRequest } from "../../services/tazemiDb";
-import { auth } from "../../services/firebaseClient";
+import { registerAggregator, isRfidAvailable } from "../../services/tazemiDb";
 
 /**
  * AggregatorRegistration Container Component (PRD v2.1 §3.1)
  *
- * Save path is BACKEND-FIRST:
- * 1. FastAPI /aggregators/register — NIN/BVN encryption (Fernet), photo
- *    upload, atomic multi-location write via Admin SDK, audit log (§6.2)
- * 2. Fallback (backend unreachable only): client-side Firebase write via
- *    tazemiDb.registerAggregator — stores masked NIN only, never raw
+ * Save path goes through the FastAPI backend (services/tazemiDb):
+ * /aggregators/register — NIN/BVN encryption (Fernet), photo upload,
+ * atomic multi-location write via Admin SDK, audit log (§6.2).
  *
  * Real-time concerns (device heartbeat, RFID scan bridge) stay on
  * Firebase listeners — the backend cannot push those.
  */
 
 const TAPU_DEVICE_ID = import.meta.env.VITE_TAPU_DEVICE_ID || "TAPU-KN-01";
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api/v1";
 
 export default function AggregatorRegistration() {
   const { user } = useAuth();
@@ -210,46 +205,12 @@ export default function AggregatorRegistration() {
   };
 
   /**
-   * Save registration (PRD v2.1 §3.1) — backend-first.
+   * Save registration (PRD v2.1 §3.1) — via the FastAPI backend.
    *
-   * The FastAPI backend encrypts NIN/BVN, uploads the photo, performs the
-   * atomic write via the Admin SDK, and audit-logs the action. Only if the
-   * backend is UNREACHABLE (network error — not a 4xx rejection) does the
-   * client-side Firebase fallback run, storing the masked NIN only.
+   * The backend encrypts NIN/BVN, uploads the photo, performs the
+   * atomic write via the Admin SDK, and audit-logs the action. The
+   * scan request is archived after a successful save (§2.6).
    */
-  const registerViaBackend = async () => {
-    const idToken = await auth?.currentUser?.getIdToken().catch(() => null);
-    const submitData = new FormData();
-    submitData.append("full_name", formData.fullName);
-    submitData.append("phone_number", formData.phoneNumber);
-    submitData.append("market_location", formData.marketLocation);
-    submitData.append("nin_or_bvn", formData.ninOrBVN);
-    submitData.append("rfid_uid", formData.rfidUID.toUpperCase());
-    submitData.append("initial_topup", Number(formData.topUpAmount));
-    submitData.append("created_by", user?.uid || "unknown");
-    submitData.append("photo", formData.photo);
-
-    const response = await fetch(`${API_BASE}/aggregators/register`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${user?.access_token || idToken || ""}`,
-      },
-      body: submitData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const err = new Error(
-        errorData.detail || errorData.message || `Registration failed (${response.status})`,
-      );
-      err.httpStatus = response.status;
-      throw err;
-    }
-
-    const result = await response.json();
-    return result?.data || result?.aggregator || result;
-  };
-
   const handleSaveRegistration = async () => {
     setGeneralError("");
 
@@ -260,29 +221,18 @@ export default function AggregatorRegistration() {
     setIsLoading(true);
 
     try {
-      let aggregator;
-      try {
-        aggregator = await registerViaBackend();
-        console.log("[Registration] Saved via backend:", aggregator?.id);
-        if (scanSessionId) await archiveScanRequest(scanSessionId).catch(() => {});
-      } catch (backendError) {
-        // 4xx/5xx = real rejection (validation, auth, duplicate) — surface it.
-        if (backendError.httpStatus) throw backendError;
-
-        // Network failure — backend unreachable. Client-side Firebase fallback.
-        console.warn("[Registration] Backend unreachable, using Firebase fallback");
-        aggregator = await registerAggregator({
-          fullName: formData.fullName,
-          phoneNumber: formData.phoneNumber,
-          marketLocation: formData.marketLocation,
-          ninOrBvn: formData.ninOrBVN,
-          photoFile: formData.photo,
-          rfidUid: formData.rfidUID,
-          initialTopUp: Number(formData.topUpAmount),
-          operatorId: user?.uid || "unknown",
-          scanSessionId,
-        });
-      }
+      const aggregator = await registerAggregator({
+        fullName: formData.fullName,
+        phoneNumber: formData.phoneNumber,
+        marketLocation: formData.marketLocation,
+        ninOrBvn: formData.ninOrBVN,
+        photoFile: formData.photo,
+        rfidUid: formData.rfidUID,
+        initialTopUp: Number(formData.topUpAmount),
+        operatorId: user?.uid || "unknown",
+        scanSessionId,
+      });
+      console.log("[Registration] Saved via backend:", aggregator?.id);
 
       // Show success screen
       setNewAggregator(aggregator);

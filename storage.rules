@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Firebase Storage rules — aggregator registration photos (§3.1).
+// Path convention matches tazemiDb.uploadAggregatorPhoto:
+//   aggregator-photos/{aggregatorId}.jpg
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /aggregator-photos/{fileName} {
+      // Any signed-in dashboard/device user can display photos.
+      allow read: if request.auth != null;
+      // Only staff roles can upload; images only, max 5 MB.
+      allow write: if request.auth != null
+        && (request.auth.token.role == 'CEO' || request.auth.token.role == 'FIELD_OPERATOR')
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Everything else is locked down.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

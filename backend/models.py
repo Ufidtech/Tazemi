@@ -366,3 +366,108 @@ class SensorReadingPatch(PatchModel):
         if value is not None and not str(value).strip():
             raise ValueError("must not be empty")
         return value
+
+
+CRATE_GRADES = {"A", "B", "C", "D"}
+CRATE_STATUSES = {"available", "in_use", "dispatched", "returned", "damaged", "lost"}
+CRATE_CONDITIONS = {"serviceable", "damaged", "lost"}
+
+
+class CrateCreate(WriteModel):
+    grade: str
+
+    @field_validator("grade")
+    @classmethod
+    def _valid_grade(cls, value: str):
+        if value not in CRATE_GRADES:
+            raise ValueError("grade must be one of A, B, C, D")
+        return value
+
+
+class CratePatch(PatchModel):
+    grade: Optional[str] = None
+    status: Optional[str] = None
+    condition: Optional[str] = None
+    current_aggregator_id: Optional[str] = None
+    current_batch_ref: Optional[str] = None
+
+    @field_validator("grade")
+    @classmethod
+    def _valid_grade(cls, value: Optional[str]):
+        if value is not None and value not in CRATE_GRADES:
+            raise ValueError("grade must be one of A, B, C, D")
+        return value
+
+    @field_validator("status")
+    @classmethod
+    def _valid_status(cls, value: Optional[str]):
+        if value is not None and value not in CRATE_STATUSES:
+            raise ValueError(f"status must be one of {sorted(CRATE_STATUSES)}")
+        return value
+
+    @field_validator("condition")
+    @classmethod
+    def _valid_condition(cls, value: Optional[str]):
+        if value is not None and value not in CRATE_CONDITIONS:
+            raise ValueError(f"condition must be one of {sorted(CRATE_CONDITIONS)}")
+        return value
+
+
+class CrateAssign(WriteModel):
+    aggregator_id: str
+    batch_ref: str
+
+    @field_validator("aggregator_id", "batch_ref")
+    @classmethod
+    def _required_text(cls, value: str):
+        if not str(value).strip():
+            raise ValueError("must not be empty")
+        return value
+
+
+class CrateReturn(WriteModel):
+    condition: str = "serviceable"
+
+    @field_validator("condition")
+    @classmethod
+    def _valid_condition(cls, value: str):
+        if value not in CRATE_CONDITIONS:
+            raise ValueError(f"condition must be one of {sorted(CRATE_CONDITIONS)}")
+        return value
+
+
+class OperatorCreate(WriteModel):
+    name: str
+    role: str
+    pin: str
+
+    @field_validator("name", "role")
+    @classmethod
+    def _required_text(cls, value: str):
+        if not str(value).strip():
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("pin")
+    @classmethod
+    def _valid_pin(cls, value: str):
+        if not str(value).isdigit() or not 4 <= len(str(value)) <= 6:
+            raise ValueError("pin must be 4-6 digits")
+        return str(value)
+
+
+class OperatorPatch(PatchModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    pin: Optional[str] = None
+
+    @field_validator("pin")
+    @classmethod
+    def _valid_pin(cls, value: Optional[str]):
+        if value is not None and (not str(value).isdigit() or not 4 <= len(str(value)) <= 6):
+            raise ValueError("pin must be 4-6 digits")
+        return value
+
+
+class OperatorPinVerify(WriteModel):
+    pin: str
