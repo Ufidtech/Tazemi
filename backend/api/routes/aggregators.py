@@ -31,12 +31,13 @@ def read_aggregators():
 async def register(
     full_name: str = Form(...),
     phone_number: str = Form(...),
-    market_location: str = Form(...),
-    nin_or_bvn: str = Form(...),
     rfid_uid: str = Form(...),
-    initial_topup: float = Form(...),
-    created_by: str = Form(...),
     photo: UploadFile = File(...),
+    # Optional — NewTazemi registers with only the four fields above.
+    market_location: str = Form(default=""),
+    nin_or_bvn: str = Form(default=""),
+    initial_topup: float = Form(default=0),
+    created_by: str = Form(default=""),
     user=Depends(resolve_actor),
 ):
     role = (user.get("role") or "").lower()

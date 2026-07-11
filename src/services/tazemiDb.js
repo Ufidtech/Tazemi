@@ -91,6 +91,8 @@ export async function isRfidAvailable(uid) {
 
 /* ------------------------------------------------------------------ */
 /* Registration (§3.1 — backend: encryption, photo, atomic write)      */
+/* NewTazemi minimal shape: fullName, phoneNumber, photoFile, rfidUid. */
+/* marketLocation / ninOrBvn / initialTopUp are optional (PRD v2.1).   */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -104,23 +106,23 @@ export async function isRfidAvailable(uid) {
 export async function registerAggregator({
   fullName,
   phoneNumber,
-  marketLocation,
-  ninOrBvn,
   photoFile,
   rfidUid,
-  initialTopUp,
+  marketLocation = "",
+  ninOrBvn = "",
+  initialTopUp = 0,
   operatorId,
   scanSessionId = null,
 }) {
   const formData = new FormData();
   formData.append("full_name", fullName);
   formData.append("phone_number", phoneNumber);
-  formData.append("market_location", marketLocation);
-  formData.append("nin_or_bvn", ninOrBvn);
   formData.append("rfid_uid", String(rfidUid).toUpperCase());
-  formData.append("initial_topup", Number(initialTopUp));
   formData.append("created_by", operatorId || "unknown");
   if (photoFile) formData.append("photo", photoFile);
+  if (marketLocation) formData.append("market_location", marketLocation);
+  if (ninOrBvn) formData.append("nin_or_bvn", ninOrBvn);
+  if (Number(initialTopUp) > 0) formData.append("initial_topup", Number(initialTopUp));
 
   const aggregator = await apiRequest("/aggregators/register", {
     method: "POST",
@@ -193,6 +195,21 @@ export async function updatePricing({ activeRate, season }) {
 
 export async function fetchPricing() {
   return apiRequest("/pricing/current");
+}
+
+/* ------------------------------------------------------------------ */
+/* Hub settings (Settings page — CEO only for updates)                 */
+/* ------------------------------------------------------------------ */
+
+export async function fetchHubSettings() {
+  return apiRequest("/settings/hub");
+}
+
+export async function updateHubSettings({ hubName, location }) {
+  return apiRequest("/settings/hub", {
+    method: "PUT",
+    body: { hub_name: hubName ?? null, location: location ?? null },
+  });
 }
 
 /* ------------------------------------------------------------------ */

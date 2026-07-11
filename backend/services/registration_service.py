@@ -104,12 +104,12 @@ def _validate_and_clean(fields: dict) -> dict:
 
     phone = normalize_phone(fields.get("phone_number") or "")
 
+    # Optional (NewTazemi spec) — the dashboard registers with only
+    # name/phone/photo/RFID. PRD v2.1 clients may still send these.
     market_location = (fields.get("market_location") or "").strip()
-    if not market_location:
-        raise HTTPException(status_code=400, detail="Market location is required")
 
     nin_or_bvn = re.sub(r"\D", "", fields.get("nin_or_bvn") or "")
-    if len(nin_or_bvn) != 11:
+    if nin_or_bvn and len(nin_or_bvn) != 11:
         raise HTTPException(status_code=400, detail="NIN or BVN must be exactly 11 digits")
 
     rfid_uid = (fields.get("rfid_uid") or "").strip().upper()
@@ -120,11 +120,15 @@ def _validate_and_clean(fields: dict) -> dict:
     if not created_by:
         raise HTTPException(status_code=400, detail="created_by is required")
 
-    try:
-        initial_topup = float(fields.get("initial_topup"))
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="Initial top-up must be numeric")
-    if initial_topup < MIN_TOPUP:
+    raw_topup = fields.get("initial_topup")
+    if raw_topup in (None, ""):
+        initial_topup = 0.0
+    else:
+        try:
+            initial_topup = float(raw_topup)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Initial top-up must be numeric")
+    if initial_topup and initial_topup < MIN_TOPUP:
         raise HTTPException(status_code=400, detail=f"Initial top-up must be at least {MIN_TOPUP}")
 
     return {
@@ -144,9 +148,10 @@ def _assert_unique(clean: dict) -> None:
         raise HTTPException(status_code=409, detail="RFID UID already exists")
     if any(item.get("phone_number") == clean["phone_number"] for item in existing):
         raise HTTPException(status_code=409, detail="Aggregator already exists")
-    nin_hash = hash_sensitive(clean["nin_or_bvn"])
-    if any(item.get("nin_hash") == nin_hash for item in existing):
-        raise HTTPException(status_code=409, detail="Aggregator already exists")
+    if clean["nin_or_bvn"]:
+        nin_hash = hash_sensitive(clean["nin_or_bvn"])
+        if any(item.get("nin_hash") == nin_hash for item in existing):
+            raise HTTPException(status_code=409, detail="Aggregator already exists")
 
 
 # --------------------------------------------------------------------------- #
@@ -219,7 +224,11 @@ def register_aggregator(fields: dict, photo_filename: str, photo_bytes: bytes, p
         photo_url = _store_photo(aggregator_id, photo_filename, photo_bytes, photo_content_type)
 
         initial_topup = clean["initial_topup"]
-        balance = initial_topup - CARD_FEE
+        has_topup = initial_topup > 0
+        # Without an initial top-up (NewTazemi minimal registration) the
+        # card fee stays due — topup_aggregator deducts it from the first
+        # top-up (card_fee_paid=False path).
+        balance = initial_topup - CARD_FEE if has_topup else 0.0
         timestamp = _now()
 
         record = {
@@ -227,13 +236,13 @@ def register_aggregator(fields: dict, photo_filename: str, photo_bytes: bytes, p
             "full_name": clean["full_name"],
             "phone_number": clean["phone_number"],
             "market_location": clean["market_location"],
-            "nin_or_bvn_encrypted": encrypt_sensitive(clean["nin_or_bvn"]),
-            "nin_hash": hash_sensitive(clean["nin_or_bvn"]),
+            "nin_or_bvn_encrypted": encrypt_sensitive(clean["nin_or_bvn"]) if clean["nin_or_bvn"] else None,
+            "nin_hash": hash_sensitive(clean["nin_or_bvn"]) if clean["nin_or_bvn"] else None,
             "photo_url": photo_url,
             "rfid_uid": clean["rfid_uid"],
             "balance": balance,
             "account_status": "ACTIVE",
-            "card_fee_paid": True,
+            "card_fee_paid": has_topup,
             "total_batches": 0,
             "total_crates_coated": 0,
             "registered_by": clean["created_by"],
@@ -245,32 +254,34 @@ def register_aggregator(fields: dict, photo_filename: str, photo_bytes: bytes, p
             "updated_at": timestamp,
         }
 
-        topup_txn = {
-            "id": uuid4().hex,
-            "transaction_id": uuid4().hex,
-            "aggregator_id": aggregator_id,
-            "type": "TOPUP",
-            "amount": initial_topup,
-            "balance_before": 0,
-            "balance_after": initial_topup,
-            "created_by": clean["created_by"],
-            "created_at": timestamp,
-            "metadata": {"source": "registration"},
-        }
-        card_fee_txn = {
-            "id": uuid4().hex,
-            "transaction_id": uuid4().hex,
-            "aggregator_id": aggregator_id,
-            "type": "CARD_FEE",
-            "amount": CARD_FEE,
-            "balance_before": initial_topup,
-            "balance_after": balance,
-            "created_by": clean["created_by"],
-            "created_at": timestamp,
-            "metadata": {"source": "registration"},
-        }
+        transactions = []
+        if has_topup:
+            transactions.append({
+                "id": uuid4().hex,
+                "transaction_id": uuid4().hex,
+                "aggregator_id": aggregator_id,
+                "type": "TOPUP",
+                "amount": initial_topup,
+                "balance_before": 0,
+                "balance_after": initial_topup,
+                "created_by": clean["created_by"],
+                "created_at": timestamp,
+                "metadata": {"source": "registration"},
+            })
+            transactions.append({
+                "id": uuid4().hex,
+                "transaction_id": uuid4().hex,
+                "aggregator_id": aggregator_id,
+                "type": "CARD_FEE",
+                "amount": CARD_FEE,
+                "balance_before": initial_topup,
+                "balance_after": balance,
+                "created_by": clean["created_by"],
+                "created_at": timestamp,
+                "metadata": {"source": "registration"},
+            })
 
-        _write_records_atomically(record, [topup_txn, card_fee_txn])
+        _write_records_atomically(record, transactions)
 
     return {
         "id": aggregator_id,

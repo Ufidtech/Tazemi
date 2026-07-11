@@ -460,12 +460,20 @@ class OperatorPatch(PatchModel):
     name: Optional[str] = None
     role: Optional[str] = None
     pin: Optional[str] = None
+    status: Optional[str] = None
 
     @field_validator("pin")
     @classmethod
     def _valid_pin(cls, value: Optional[str]):
         if value is not None and (not str(value).isdigit() or not 4 <= len(str(value)) <= 6):
             raise ValueError("pin must be 4-6 digits")
+        return value
+
+    @field_validator("status")
+    @classmethod
+    def _valid_status(cls, value: Optional[str]):
+        if value is not None and value not in {"active", "inactive"}:
+            raise ValueError("status must be active or inactive")
         return value
 
 
