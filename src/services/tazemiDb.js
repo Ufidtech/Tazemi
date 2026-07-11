@@ -93,6 +93,14 @@ export async function isRfidAvailable(uid) {
 /* Registration (§3.1 — backend: encryption, photo, atomic write)      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * BLOCKED — do not call from a new registration form yet.
+ * This endpoint requires market_location, nin_or_bvn, and initial_topup
+ * (PRD v2.1), which NewTazemi.docx explicitly excludes. Waiting on backend
+ * dev to confirm which spec is authoritative before wiring the form.
+ * The read-only aggregator list below is NOT blocked — that only needs
+ * GET /aggregators, which is stable regardless of the registration answer.
+ */
 export async function registerAggregator({
   fullName,
   phoneNumber,
@@ -121,7 +129,7 @@ export async function registerAggregator({
 
   // §2.6: archive the scan request after the UID is saved.
   if (scanSessionId) {
-    await archiveScanRequest(scanSessionId).catch(() => {});
+    await archiveScanRequest(scanSessionId).catch(() => { });
   }
 
   return aggregator;
@@ -203,4 +211,75 @@ export async function expireScanRequest(sessionId) {
 /** Remove a cancelled scan request without archiving noise. */
 export async function deleteScanRequest(sessionId) {
   return apiRequest(`/scan-requests/${sessionId}`, { method: "DELETE" });
+}
+
+/* ------------------------------------------------------------------ */
+/* Aggregators — read only (NewTazemi.docx Page 1 list)                */
+/* Registration form is BLOCKED — see comment above registerAggregator */
+/* ------------------------------------------------------------------ */
+
+export async function fetchAggregators() {
+  return apiRequest("/aggregators");
+}
+
+/* ------------------------------------------------------------------ */
+/* Crates (NewTazemi.docx Page 2 — assign / dispatch / return)         */
+/* Confirmed against backend/api/routes/crates.py — unblocked.         */
+/* ------------------------------------------------------------------ */
+
+export async function fetchCrates({ status, aggregatorId } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (aggregatorId) params.set("aggregator_id", aggregatorId);
+  const qs = params.toString();
+  return apiRequest(`/crates${qs ? `?${qs}` : ""}`);
+}
+
+export async function assignCrate({ crateId, aggregatorId, batchRef }) {
+  return apiRequest(`/crates/${crateId}/assign`, {
+    method: "POST",
+    body: { aggregator_id: aggregatorId, batch_ref: batchRef },
+  });
+}
+
+export async function dispatchCrate(crateId) {
+  return apiRequest(`/crates/${crateId}/dispatch`, { method: "POST" });
+}
+
+export async function returnCrate({ crateId, condition = "serviceable" }) {
+  return apiRequest(`/crates/${crateId}/return`, {
+    method: "POST",
+    body: { condition },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Transactions (NewTazemi.docx Page 3 — read-only)                    */
+/* ------------------------------------------------------------------ */
+
+export async function fetchTransactions(aggregatorId) {
+  const qs = aggregatorId
+    ? `?aggregator_id=${encodeURIComponent(aggregatorId)}`
+    : "";
+  return apiRequest(`/transactions${qs}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* Operators (NewTazemi.docx Page 5 — Settings, CEO/admin only)        */
+/* ------------------------------------------------------------------ */
+
+export async function fetchOperators() {
+  return apiRequest("/operators");
+}
+
+export async function createOperator({ name, role, pin }) {
+  return apiRequest("/operators", { method: "POST", body: { name, role, pin } });
+}
+
+export async function updateOperator(operatorId, patch) {
+  return apiRequest(`/operators/${operatorId}`, { method: "PATCH", body: patch });
+}
+
+export async function deleteOperator(operatorId) {
+  return apiRequest(`/operators/${operatorId}`, { method: "DELETE" });
 }

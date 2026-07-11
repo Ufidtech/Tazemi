@@ -169,14 +169,12 @@ export function Footer() {
 export function Sidebar({ active }) {
   const { user } = useAuth();
   const links = [
-    ["📊", "CEO Dashboard", "/dashboard"],
-    ["📡", "IoT Monitoring", "/dashboard/iot"],
-    ["⚙️", "Coating Operations", "/dashboard/operations"],
-    ["🏢", "Aggregator Directory", "/dashboard/aggregators"],
-    ["🔬", "Bio-Shield R&D", "/dashboard/rd"],
-    ["📈", "Truck Data Analysis", "/dashboard/analysis"],
+    ["📊", "Dashboard", "/dashboard"],
+    ["🏢", "Aggregators", "/dashboard/aggregators"],
+    ["📦", "Crates", "/dashboard/crates"],
+    ["💳", "Transactions", "/dashboard/transactions"],
     ...(String(user?.role).toLowerCase() === "ceo"
-      ? [["👥", "Staff Management", "/dashboard/staff"]]
+      ? [["⚙️", "Settings", "/dashboard/settings"]]
       : []),
   ];
   return (

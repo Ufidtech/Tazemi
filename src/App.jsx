@@ -16,10 +16,15 @@ import AggregatorRegistration from "./pages/dashboard/AggregatorRegistration";
 import StaffManagement from "./pages/dashboard/StaffManagement";
 import {
   Operations,
-  Aggregators,
   RnD,
   TruckAnalysis,
 } from "./pages/dashboard/DashboardPages";
+
+// NewTazemi.docx pages (2-3 day MVP: Aggregators, Crates, Transactions, Settings)
+import AggregatorsPage from "./pages/dashboard/Aggregators/AggregatorsPage";
+import CratesPage from "./pages/dashboard/Crates/CratesPage";
+import TransactionsPage from "./pages/dashboard/Transactions/TransactionsPage";
+import SettingsPage from "./pages/dashboard/Settings/SettingsPage";
 
 export default function App() {
   return (
@@ -62,10 +67,16 @@ export default function App() {
           path="/dashboard/aggregators"
           element={
             <ProtectedRoute>
-              <Aggregators />
+              <AggregatorsPage />
             </ProtectedRoute>
           }
         />
+        {/*
+          Registration route kept pointing at the OLD PRD v2.1 form for now —
+          do not link to this from the sidebar until the backend-dev reply
+          confirms which spec's fields are authoritative. See TODO comments
+          in AggregatorsPage.jsx and tazemiDb.js.
+        */}
         <Route
           path="/dashboard/aggregators/register"
           element={
@@ -74,6 +85,31 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/dashboard/crates"
+          element={
+            <ProtectedRoute>
+              <CratesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/transactions"
+          element={
+            <ProtectedRoute>
+              <TransactionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/settings"
+          element={
+            <ProtectedRoute allowedRoles={["ceo"]}>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        {/* Old staff page — kept reachable directly, not in new nav */}
         <Route
           path="/dashboard/staff"
           element={
