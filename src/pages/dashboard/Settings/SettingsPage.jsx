@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@components";
-import { fetchOperators, createOperator, deleteOperator } from "../../../services/tazemiDb";
+import {
+  fetchOperators,
+  createOperator,
+  updateOperator,
+  fetchHubSettings,
+  updateHubSettings,
+} from "../../../services/tazemiDb";
 
 export default function SettingsPage() {
   const [operators, setOperators] = useState([]);
@@ -22,7 +28,9 @@ export default function SettingsPage() {
         if (!cancelled) setOperators(data || []);
       } catch {
         if (!cancelled) {
-          setError("Could not load operators. Check your internet connection and try again.");
+          setError(
+            "Could not load operators. Check your internet connection and try again.",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -33,29 +41,25 @@ export default function SettingsPage() {
     };
   }, [reloadKey]);
 
-  const handleRemove = async (operatorId) => {
-    // NOTE: spec asks for "deactivate," but the backend only supports
-    // permanent delete (no status/active field on OperatorPatch). Using
-    // delete for now — flagged to backend dev to add a reversible
-    // deactivate instead, since delete can't be undone from the UI.
-    if (!window.confirm(`Remove operator ${operatorId}? This cannot be undone from here.`)) return;
+  const handleToggleStatus = async (operator) => {
+    const operatorId = operator.operator_id || operator.id;
+    const isActive = operator.status !== "inactive";
+    const nextStatus = isActive ? "inactive" : "active";
+    const verb = isActive ? "Deactivate" : "Reactivate";
+    if (!window.confirm(`${verb} operator ${operatorId}?`)) return;
     try {
-      await deleteOperator(operatorId);
+      await updateOperator(operatorId, { status: nextStatus });
       reload();
     } catch {
-      setError("Could not remove operator. Check your internet connection and try again.");
+      setError("Could not save. Check your internet connection and try again.");
     }
   };
 
   return (
     <DashboardLayout active="/dashboard/settings" title="Settings">
-      <div className="bg-amber-50 text-amber-800 text-sm rounded-lg p-3 mb-5">
-        Hub name / location settings aren't available yet — no backend endpoint
-        exists for it. Added to the list of things to confirm with the backend
-        dev.
-      </div>
+      <HubSettings />
 
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 mt-8">
         <h2 className="text-lg font-bold text-deep">Operator Accounts</h2>
         <button
           onClick={() => setShowAdd(true)}
@@ -66,11 +70,15 @@ export default function SettingsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 text-sm rounded-lg p-3 mb-4">{error}</div>
+        <div className="bg-red-50 text-red-700 text-sm rounded-lg p-3 mb-4">
+          {error}
+        </div>
       )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Loading operators…</div>
+        <div className="text-center py-12 text-gray-400">
+          Loading operators…
+        </div>
       ) : (
         <div className="bg-white rounded-lg overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
@@ -79,32 +87,52 @@ export default function SettingsPage() {
                 <th className="p-3">ID</th>
                 <th className="p-3">Name</th>
                 <th className="p-3">Role</th>
+                <th className="p-3">Status</th>
                 <th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
-              {operators.map((op) => (
-                <tr key={op.operator_id || op.id} className="border-b border-gray-100 last:border-0">
-                  <td className="p-3 font-mono">{op.operator_id || op.id}</td>
-                  <td className="p-3">{op.name}</td>
-                  <td className="p-3 capitalize">{op.role}</td>
-                  <td className="p-3 text-right">
-                    <button
-                      onClick={() => handleRemove(op.operator_id || op.id)}
-                      className="text-red-600 font-semibold hover:underline text-xs"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {operators.map((op) => {
+                const isActive = op.status !== "inactive";
+                return (
+                  <tr
+                    key={op.operator_id || op.id}
+                    className="border-b border-gray-100 last:border-0"
+                  >
+                    <td className="p-3 font-mono">{op.operator_id || op.id}</td>
+                    <td className="p-3">{op.name}</td>
+                    <td className="p-3 capitalize">{op.role}</td>
+                    <td className="p-3">
+                      <span
+                        className={`text-xs font-semibold ${isActive ? "text-teal" : "text-gray-400"}`}
+                      >
+                        {isActive ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => handleToggleStatus(op)}
+                        className={`font-semibold hover:underline text-xs ${isActive ? "text-red-600" : "text-teal"}`}
+                      >
+                        {isActive ? "Deactivate" : "Reactivate"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
       {showAdd && (
-        <AddOperatorModal onClose={() => setShowAdd(false)} onDone={() => { setShowAdd(false); reload(); }} />
+        <AddOperatorModal
+          onClose={() => setShowAdd(false)}
+          onDone={() => {
+            setShowAdd(false);
+            reload();
+          }}
+        />
       )}
     </DashboardLayout>
   );
@@ -160,7 +188,9 @@ function AddOperatorModal({ onClose, onDone }) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">PIN (4-6 digits)</label>
+            <label className="block text-sm font-medium mb-1">
+              PIN (4-6 digits)
+            </label>
             <input
               type="password"
               inputMode="numeric"
@@ -171,15 +201,113 @@ function AddOperatorModal({ onClose, onDone }) {
           </div>
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <div className="flex gap-3 justify-end pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-500 hover:bg-gray-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-500 hover:bg-gray-100"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={submitting} className="px-4 py-2 rounded-lg text-sm font-semibold bg-deep text-white hover:bg-teal disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-deep text-white hover:bg-teal disabled:opacity-50"
+            >
               {submitting ? "Saving…" : "Add"}
             </button>
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+function HubSettings() {
+  const [hubName, setHubName] = useState("");
+  const [location, setLocation] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchHubSettings();
+        if (!cancelled) {
+          setHubName(data?.hub_name || "");
+          setLocation(data?.location || "");
+        }
+      } catch {
+        if (!cancelled) setError("Could not load hub settings.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    setSaved(false);
+    try {
+      await updateHubSettings({ hubName, location });
+      setSaved(true);
+    } catch {
+      setError("Could not save. Check your internet connection and try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-sm text-gray-400">Loading hub settings…</div>;
+  }
+
+  return (
+    <div className="bg-white rounded-lg p-5">
+      <h2 className="text-lg font-bold text-deep mb-4">Hub Settings</h2>
+      <form
+        onSubmit={handleSave}
+        className="grid sm:grid-cols-2 gap-4 items-end"
+      >
+        <div>
+          <label className="block text-sm font-medium mb-1">Hub Name</label>
+          <input
+            type="text"
+            value={hubName}
+            onChange={(e) => setHubName(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Location</label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="sm:col-span-2 flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-deep text-white text-sm font-semibold hover:bg-teal disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          {saved && (
+            <span className="text-teal text-sm font-medium">Saved ✓</span>
+          )}
+          {error && <span className="text-red-600 text-sm">{error}</span>}
+        </div>
+      </form>
     </div>
   );
 }
