@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -13,7 +13,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { DashboardLayout, DemoBanner, StatCard, Badge } from "@components";
+import { DashboardLayout, DemoBanner, StatCard } from "@components";
 import {
   fetchDashboardSummary,
   fetchTrucks,
@@ -263,7 +263,11 @@ export default function CEODashboard() {
           {trucks
             .filter((t) => t.status === "alert" || (t.alerts?.length ?? 0) > 0)
             .flatMap((t) =>
-              (t.alerts ?? []).map((a) => ({ ...a, truck: t.id, agg: t.aggregator })),
+              (t.alerts ?? []).map((a) => ({
+                ...a,
+                truck: t.id,
+                agg: t.aggregator,
+              })),
             ).length === 0 ? (
             <div className="p-8 text-center text-gray-400 text-sm">
               No active alerts

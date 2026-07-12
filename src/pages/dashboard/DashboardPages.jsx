@@ -1,5 +1,5 @@
 // ── COATING OPERATIONS PAGE ──────────────────────────────────
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout, DemoBanner, SearchBar, Badge } from "@components";
 import { useAuth } from "../../context/AuthContext";
 import { topupAggregator } from "../../services/auth";
@@ -330,7 +330,6 @@ export function Aggregators() {
   });
 
   const agg_batches = (id) => batches.filter((b) => b.aggregator_id === id);
-  const agg_trucks = (id) => trucks.filter((t) => t.aggregator_id === id);
 
   return (
     <DashboardLayout

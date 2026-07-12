@@ -1,4 +1,4 @@
-import { fetchAggregators, fetchAlerts, fetchActivity, fetchBatches, fetchDashboardSummary, fetchHealth, fetchTrials, fetchTrucks } from "./api.js";
+import { fetchAggregators, fetchAlerts, fetchActivity, fetchBatches, fetchDashboardSummary, fetchTrials, fetchTrucks } from "./api.js";
 
 const cache = new Map();
 
