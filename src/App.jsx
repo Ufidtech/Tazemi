@@ -40,7 +40,7 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ceo", "field_operator"]}>
               <CEODashboard />
             </ProtectedRoute>
           }
@@ -65,7 +65,7 @@ export default function App() {
         <Route
           path="/dashboard/aggregators"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ceo", "field_operator"]}>
               <AggregatorsPage />
             </ProtectedRoute>
           }
@@ -87,7 +87,7 @@ export default function App() {
         <Route
           path="/dashboard/crates"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ceo", "field_operator"]}>
               <CratesPage />
             </ProtectedRoute>
           }
@@ -95,7 +95,7 @@ export default function App() {
         <Route
           path="/dashboard/transactions"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["ceo", "field_operator"]}>
               <TransactionsPage />
             </ProtectedRoute>
           }
@@ -134,6 +134,20 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/dashboard/no-access"
+          element={
+            <div className="min-h-screen flex items-center justify-center bg-deep text-white flex-col gap-4 text-center px-6">
+              <div className="text-teal font-black text-5xl">403</div>
+              <div className="text-xl">
+                Your account doesn't have access to this page.
+              </div>
+              <a href="#/auth" className="text-teal hover:underline">
+                Sign in with a different account
+              </a>
+            </div>
+          }
+        />
         <Route
           path="*"
           element={
