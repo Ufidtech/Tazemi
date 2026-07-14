@@ -206,7 +206,54 @@ async function backendLogin(payload) {
   return combined;
 }
 
+/**
+ * Operator PIN login (NewTazemi flow — operators register aggregators,
+ * CEO creates operator accounts). POST /operators/{id}/verify-pin returns
+ * a session { user, access_token, refresh_token, ... }; the access_token
+ * works as a Bearer token on every backend write endpoint.
+ */
+export async function loginOperator({ operatorId, pin }) {
+  let result;
+  try {
+    result = await request(
+      `/operators/${encodeURIComponent(String(operatorId).trim().toUpperCase())}/verify-pin`,
+      {
+        method: "POST",
+        body: JSON.stringify({ pin: String(pin) }),
+      },
+    );
+  } catch (error) {
+    const raw = String(error?.message || "");
+    if (raw.includes("429") || raw.includes("Rate limit")) {
+      throw new Error("Too many attempts. Wait a minute and try again.", { cause: error });
+    }
+    if (raw.includes("Invalid operator") || raw.includes("401")) {
+      throw new Error("Invalid operator ID or PIN.", { cause: error });
+    }
+    throw new Error("Cannot reach the server. Check your connection and try again.", { cause: error });
+  }
+
+  const sessionUser = result?.user || {};
+  const combined = {
+    ...sessionUser,
+    name: sessionUser.name || sessionUser.operator_id,
+    access_token: result?.access_token,
+    refresh_token: result?.refresh_token,
+    expires_at: result?.expires_at,
+    provider: "operator-pin",
+  };
+
+  setStoredUser(combined);
+  setFirebaseAuth(combined);
+  return combined;
+}
+
 export async function login(payload) {
+  // Operator PIN login (NewTazemi flow) — { operatorId, pin }.
+  if (payload?.operatorId && payload?.pin) {
+    return loginOperator(payload);
+  }
+
   if (isBackendMode()) {
     return backendLogin(payload);
   }
@@ -308,7 +355,18 @@ export function subscribeToFirebaseAuth(callback) {
     return () => {};
   }
 
-  return onAuthStateChanged(auth, callback);
+  return onAuthStateChanged(auth, (firebaseUser) => {
+    if (!firebaseUser) {
+      // Operator PIN sessions are backend sessions, not Firebase users —
+      // don't let the Firebase signed-out event wipe them.
+      const stored = getStoredUser();
+      if (stored?.provider === "operator-pin" && stored?.access_token) {
+        callback(stored);
+        return;
+      }
+    }
+    callback(firebaseUser);
+  });
 }
 
 export async function fetchStaff() {

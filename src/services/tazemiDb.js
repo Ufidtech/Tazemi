@@ -45,7 +45,15 @@ export function maskIdentity(ninOrBvn) {
 
 async function authHeaders() {
   const token = await auth?.currentUser?.getIdToken().catch(() => null);
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (token) return { Authorization: `Bearer ${token}` };
+  // Operator PIN / backend sessions store their access_token locally.
+  try {
+    const stored = JSON.parse(localStorage.getItem("tazemi_auth_user") || "null");
+    if (stored?.access_token) return { Authorization: `Bearer ${stored.access_token}` };
+  } catch {
+    // ignore malformed storage
+  }
+  return {};
 }
 
 async function apiRequest(path, { method = "GET", body, formData } = {}) {
@@ -96,12 +104,12 @@ export async function isRfidAvailable(uid) {
 /* ------------------------------------------------------------------ */
 
 /**
- * BLOCKED — do not call from a new registration form yet.
- * This endpoint requires market_location, nin_or_bvn, and initial_topup
- * (PRD v2.1), which NewTazemi.docx explicitly excludes. Waiting on backend
- * dev to confirm which spec is authoritative before wiring the form.
- * The read-only aggregator list below is NOT blocked — that only needs
- * GET /aggregators, which is stable regardless of the registration answer.
+ * UNBLOCKED — the backend now accepts the NewTazemi minimal shape:
+ * only full_name, phone_number, rfid_uid, and photo are required.
+ * market_location / nin_or_bvn / initial_topup remain optional (PRD v2.1
+ * clients still work). Registering without a top-up starts the balance
+ * at 0 with card_fee_paid=false; the ₦1,000 card fee is deducted
+ * automatically from the first top-up.
  */
 export async function registerAggregator({
   fullName,
@@ -231,8 +239,8 @@ export async function deleteScanRequest(sessionId) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Aggregators — read only (NewTazemi.docx Page 1 list)                */
-/* Registration form is BLOCKED — see comment above registerAggregator */
+/* Aggregators — list (NewTazemi.docx Page 1)                          */
+/* Registration is unblocked — see registerAggregator above.           */
 /* ------------------------------------------------------------------ */
 
 export async function fetchAggregators() {
