@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.auth import audit_log, resolve_actor
+from backend.auth import audit_log, enforce_rate_limit, issue_session, resolve_actor
 from backend.models import OperatorCreate, OperatorPatch, OperatorPinVerify
 from backend.services.operator_service import (
     create_operator,
@@ -68,10 +68,36 @@ def remove_operator(operator_id: str, user=Depends(resolve_actor)):
 
 @router.post("/{operator_id}/verify-pin")
 def verify_pin(operator_id: str, payload: OperatorPinVerify):
-    """PIN login for devices/kiosks — returns the operator on success."""
+    """PIN login for operators — returns a session like magic-link:
+    { user, access_token, refresh_token, expires_at, ... }.
+
+    The access_token works as a Bearer token on every resolve_actor
+    write endpoint (assign crate, register aggregator, etc.).
+    """
+    # PINs are short — throttle guesses per operator ID.
+    enforce_rate_limit({"uid": f"pin:{operator_id}"}, write=True)
+
     operator = verify_operator_pin(operator_id, payload.pin)
     if not operator:
         # Same response for unknown operator and wrong PIN (no enumeration).
         raise HTTPException(status_code=401, detail="Invalid operator ID or PIN")
-    audit_log("operator.pin_login", None, "operators", {"id": operator_id})
-    return operator
+
+    session = issue_session(
+        {
+            "uid": operator.get("operator_id"),
+            "name": operator.get("name"),
+            "role": operator.get("role"),
+            "operator_id": operator.get("operator_id"),
+            "status": operator.get("status", "active"),
+        },
+        provider="operator-pin",
+    )
+    audit_log("operator.pin_login", session["user"], "operators", {"id": operator_id})
+    return {
+        "user": session["user"],
+        "access_token": session["access_token"],
+        "refresh_token": session["refresh_token"],
+        "expires_at": session["expires_at"],
+        "refresh_expires_at": session["refresh_expires_at"],
+        "provider": session["provider"],
+    }
