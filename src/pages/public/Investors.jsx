@@ -1,4 +1,3 @@
-import React from "react";
 import { Navbar, Footer, PageMeta } from "../../components";
 import content from "../../content";
 
@@ -26,7 +25,7 @@ export default function Investors() {
       </section>
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-white">
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
             {content.investors.resources.map((resource) => (
               <div key={resource.title} className="card p-6 text-center">
                 <div className="text-4xl mb-4">{resource.icon}</div>

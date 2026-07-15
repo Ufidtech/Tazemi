@@ -1,4 +1,3 @@
-import React from "react";
 import { Navbar, Footer, PageMeta } from "../../components";
 import content from "../../content";
 
@@ -103,7 +102,7 @@ export default function Product() {
       </section>
 
       <section className="py-16 sm:py-20 px-4 sm:px-6 bg-deep text-white">
-        <div className="max-w-4xl mx-auto grid md:grid-cols-3 gap-8 text-center">
+        <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           {content.product.caas.values.map((item) => (
             <div key={item.label}>
               <div className="text-3xl font-black text-teal mb-2">

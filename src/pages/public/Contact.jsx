@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Navbar, Footer, PageMeta } from "../../components";
 import { send } from "@emailjs/browser";
 import content from "../../content";

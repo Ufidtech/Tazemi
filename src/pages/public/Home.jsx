@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import { Navbar, Footer, PageMeta } from "../../components";
 import content from "../../content";
@@ -87,7 +86,7 @@ export default function Home() {
             <div className="section-label">The Bio-Digital Loop</div>
             <h2 className="text-3xl font-bold text-deep">How Tazémi Works</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
             {content.home.steps.map(([n, t, b, icon]) => (
               <div key={n} className="card p-5 relative">
                 <div className="w-8 h-8 rounded-full bg-teal flex items-center justify-center text-white font-black text-sm mb-3">
