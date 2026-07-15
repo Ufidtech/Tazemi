@@ -27,13 +27,18 @@ A responsive marketing site with pages for:
 - Authentication
 
 ### Operational Dashboard
-A protected internal workspace for:
-- CEO dashboard insights
-- IoT monitoring
-- coating operations
-- aggregator directory management
-- bio-shield R&D views
-- truck data analysis
+A protected internal workspace, scoped to the current MVP spec (5 pages):
+- **Dashboard** — executive summary (CEO only)
+- **Aggregators** — register and view registered aggregators
+- **Crates** — assign, dispatch, and mark crates returned
+- **Transactions** — read-only log from TAPU V1
+- **Settings** — operator accounts and hub name/location (CEO only)
+
+Two separate sign-in paths:
+- **CEO** — email + password (Firebase Auth), full access to all 5 pages
+- **Field operators** — Operator ID + PIN (`/operator-login`), created by the CEO in Settings; access to Aggregators/Crates/Transactions only
+
+Older pages (IoT Monitoring, Coating Operations, Bio-Shield R&D, Truck Data Analysis, the original Aggregator Directory) are still present in the codebase but no longer linked from navigation — they belonged to an earlier, broader product spec (PRD v2.1) and are out of scope for the current MVP.
 
 ### Backend Platform
 A FastAPI backend that provides:
@@ -126,8 +131,9 @@ The platform currently supports demo-mode workflows for rapid iteration. As the 
 
 ## Security and Readiness Notes
 
-- Protected dashboard routes require authentication.
-- Core write support exists for trucks, sensors, batches, aggregators, trials, notes, and alerts.
+- Protected dashboard routes require authentication, with role-based access (`ceo` vs `field_operator`) enforced both client-side (route redirects) and server-side (every write endpoint independently verifies the caller's role — the frontend's claimed role is never trusted alone).
+- Core write support exists for aggregators, crates, transactions, operators, and hub settings, matching the current MVP spec.
+- **Never commit real `.env` values.** Only `.env.example` (with blank/placeholder values) belongs in git. If you're setting up locally, copy `.env.example` to `.env` and fill in real values there — `.env` is gitignored and should stay that way.
 - Production deployments should include stronger validation, audit logging, HTTPS, and secure secret management.
 
 ## Brand Colors
