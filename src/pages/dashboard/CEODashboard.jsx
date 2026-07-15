@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -300,12 +301,9 @@ export default function CEODashboard() {
                           {a.time}
                         </div>
                       </div>
-                      <a
-                        href="/#/dashboard/iot"
-                        className="text-teal text-xs hover:underline shrink-0"
-                      >
-                        View →
-                      </a>
+                      <span className="text-xs text-gray-400 shrink-0">
+                        (legacy alert)
+                      </span>
                     </div>
                   )),
                 )}
@@ -315,19 +313,19 @@ export default function CEODashboard() {
             <div className="section-label mb-3">Quick Links</div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
-                ["📡", "IoT Monitoring", "/#/dashboard/iot"],
-                ["⚙️", "Operations", "/#/dashboard/operations"],
-                ["🏢", "Aggregators", "/#/dashboard/aggregators"],
-                ["🔬", "R&D", "/#/dashboard/rd"],
+                ["🏢", "Aggregators", "/dashboard/aggregators"],
+                ["📦", "Crates", "/dashboard/crates"],
+                ["💳", "Transactions", "/dashboard/transactions"],
+                ["⚙️", "Settings", "/dashboard/settings"],
               ].map(([i, l, h]) => (
-                <a
+                <Link
                   key={l}
-                  href={h}
+                  to={h}
                   className="flex items-center gap-2 text-sm text-gray-700 hover:text-teal transition-colors py-1 min-w-0"
                 >
                   <span>{i}</span>
                   {l}
-                </a>
+                </Link>
               ))}
             </div>
           </div>
