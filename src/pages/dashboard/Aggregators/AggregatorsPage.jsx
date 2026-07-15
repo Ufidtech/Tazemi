@@ -82,10 +82,10 @@ export default function AggregatorsPage() {
               <tr className="bg-deep text-white text-left">
                 <th className="p-3">ID</th>
                 <th className="p-3">Name</th>
-                <th className="p-3">Phone</th>
-                <th className="p-3">Location</th>
+                <th className="p-3 hidden sm:table-cell">Phone</th>
+                <th className="p-3 hidden md:table-cell">Location</th>
                 <th className="p-3">Status</th>
-                <th className="p-3">Joined</th>
+                <th className="p-3 hidden sm:table-cell">Joined</th>
               </tr>
             </thead>
             <tbody>
@@ -96,12 +96,16 @@ export default function AggregatorsPage() {
                 >
                   <td className="p-3 font-mono font-semibold">{a.id}</td>
                   <td className="p-3">{a.name}</td>
-                  <td className="p-3">{a.contact}</td>
-                  <td className="p-3">{a.location || "—"}</td>
+                  <td className="p-3 hidden sm:table-cell">{a.contact}</td>
+                  <td className="p-3 hidden md:table-cell">
+                    {a.location || "—"}
+                  </td>
                   <td className="p-3">
                     <Badge status={a.status} />
                   </td>
-                  <td className="p-3">{a.joined || "—"}</td>
+                  <td className="p-3 hidden sm:table-cell">
+                    {a.joined || "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

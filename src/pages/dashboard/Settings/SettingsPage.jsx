@@ -59,7 +59,7 @@ export default function SettingsPage() {
     <DashboardLayout active="/dashboard/settings" title="Settings">
       <HubSettings />
 
-      <div className="flex justify-between items-center mb-4 mt-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 mt-8">
         <h2 className="text-lg font-bold text-deep">Operator Accounts</h2>
         <button
           onClick={() => setShowAdd(true)}
@@ -84,7 +84,7 @@ export default function SettingsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-deep text-white text-left">
-                <th className="p-3">ID</th>
+                <th className="p-3 hidden sm:table-cell">ID</th>
                 <th className="p-3">Name</th>
                 <th className="p-3">Role</th>
                 <th className="p-3">Status</th>
@@ -99,7 +99,9 @@ export default function SettingsPage() {
                     key={op.operator_id || op.id}
                     className="border-b border-gray-100 last:border-0"
                   >
-                    <td className="p-3 font-mono">{op.operator_id || op.id}</td>
+                    <td className="p-3 font-mono hidden sm:table-cell">
+                      {op.operator_id || op.id}
+                    </td>
                     <td className="p-3">{op.name}</td>
                     <td className="p-3 capitalize">{op.role}</td>
                     <td className="p-3">

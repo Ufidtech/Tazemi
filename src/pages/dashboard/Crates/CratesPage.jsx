@@ -8,7 +8,15 @@ import {
   returnCrate,
 } from "../../../services/tazemiDb";
 
-const STATUS_FILTERS = ["all", "available", "in_use", "dispatched", "returned", "damaged", "lost"];
+const STATUS_FILTERS = [
+  "all",
+  "available",
+  "in_use",
+  "dispatched",
+  "returned",
+  "damaged",
+  "lost",
+];
 
 export default function CratesPage() {
   const [crates, setCrates] = useState([]);
@@ -41,7 +49,9 @@ export default function CratesPage() {
         setAggregators(aggList || []);
       } catch {
         if (!cancelled) {
-          setError("Could not load crates. Check your internet connection and try again.");
+          setError(
+            "Could not load crates. Check your internet connection and try again.",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -95,34 +105,47 @@ export default function CratesPage() {
       {loading ? (
         <div className="text-center py-12 text-gray-400">Loading crates…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">No crates match this filter.</div>
+        <div className="text-center py-12 text-gray-400">
+          No crates match this filter.
+        </div>
       ) : (
         <div className="bg-white rounded-lg overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-deep text-white text-left">
                 <th className="p-3">Crate ID</th>
-                <th className="p-3">Grade</th>
+                <th className="p-3 hidden md:table-cell">Grade</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Assigned To</th>
-                <th className="p-3">Batch Ref</th>
-                <th className="p-3">Condition</th>
+                <th className="p-3 hidden sm:table-cell">Batch Ref</th>
+                <th className="p-3 hidden md:table-cell">Condition</th>
                 <th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.crate_id} className="border-b border-gray-100 last:border-0">
+                <tr
+                  key={c.crate_id}
+                  className="border-b border-gray-100 last:border-0"
+                >
                   <td className="p-3 font-mono font-semibold">{c.crate_id}</td>
-                  <td className="p-3">{c.grade}</td>
-                  <td className="p-3"><Badge status={c.status} /></td>
+                  <td className="p-3 hidden md:table-cell">{c.grade}</td>
+                  <td className="p-3">
+                    <Badge status={c.status} />
+                  </td>
                   <td className="p-3">{c.current_aggregator_id || "—"}</td>
-                  <td className="p-3">{c.current_batch_ref || "—"}</td>
-                  <td className="p-3 capitalize">{c.condition}</td>
+                  <td className="p-3 hidden sm:table-cell">
+                    {c.current_batch_ref || "—"}
+                  </td>
+                  <td className="p-3 capitalize hidden md:table-cell">
+                    {c.condition}
+                  </td>
                   <td className="p-3 text-right whitespace-nowrap">
                     {c.status === "available" && (
                       <button
-                        onClick={() => setActionCrate({ crate: c, mode: "assign" })}
+                        onClick={() =>
+                          setActionCrate({ crate: c, mode: "assign" })
+                        }
                         className="text-teal font-semibold hover:underline text-xs"
                       >
                         Assign
@@ -140,7 +163,9 @@ export default function CratesPage() {
                           Dispatch
                         </button>
                         <button
-                          onClick={() => setActionCrate({ crate: c, mode: "return" })}
+                          onClick={() =>
+                            setActionCrate({ crate: c, mode: "return" })
+                          }
                           className="text-amber-600 font-semibold hover:underline text-xs"
                         >
                           Return
@@ -149,7 +174,9 @@ export default function CratesPage() {
                     )}
                     {c.status === "dispatched" && (
                       <button
-                        onClick={() => setActionCrate({ crate: c, mode: "return" })}
+                        onClick={() =>
+                          setActionCrate({ crate: c, mode: "return" })
+                        }
                         className="text-amber-600 font-semibold hover:underline text-xs"
                       >
                         Return
@@ -197,7 +224,11 @@ function CrateActionModal({ crate, mode, aggregators, onClose, onDone }) {
           setSubmitting(false);
           return;
         }
-        await assignCrate({ crateId: crate.crate_id, aggregatorId, batchRef: batchRef.trim() });
+        await assignCrate({
+          crateId: crate.crate_id,
+          aggregatorId,
+          batchRef: batchRef.trim(),
+        });
       } else {
         await returnCrate({ crateId: crate.crate_id, condition });
       }
@@ -212,14 +243,18 @@ function CrateActionModal({ crate, mode, aggregators, onClose, onDone }) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl p-6 w-full max-w-md">
         <h2 className="text-lg font-bold text-deep mb-4">
-          {mode === "assign" ? `Assign ${crate.crate_id}` : `Return ${crate.crate_id}`}
+          {mode === "assign"
+            ? `Assign ${crate.crate_id}`
+            : `Return ${crate.crate_id}`}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "assign" ? (
             <>
               <div>
-                <label className="block text-sm font-medium mb-1">Aggregator</label>
+                <label className="block text-sm font-medium mb-1">
+                  Aggregator
+                </label>
                 <select
                   value={aggregatorId}
                   onChange={(e) => setAggregatorId(e.target.value)}
@@ -234,7 +269,9 @@ function CrateActionModal({ crate, mode, aggregators, onClose, onDone }) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Batch Reference</label>
+                <label className="block text-sm font-medium mb-1">
+                  Batch Reference
+                </label>
                 <input
                   type="text"
                   value={batchRef}
@@ -246,7 +283,9 @@ function CrateActionModal({ crate, mode, aggregators, onClose, onDone }) {
             </>
           ) : (
             <div>
-              <label className="block text-sm font-medium mb-1">Condition</label>
+              <label className="block text-sm font-medium mb-1">
+                Condition
+              </label>
               <select
                 value={condition}
                 onChange={(e) => setCondition(e.target.value)}
