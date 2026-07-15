@@ -8,14 +8,13 @@ import { useAuth } from "../../context/AuthContext";
  */
 export function Sidebar({ active }) {
   const { user } = useAuth();
+  const isCeo = String(user?.role).toLowerCase() === "ceo";
   const links = [
-    ["📊", "Dashboard", "/dashboard"],
+    ...(isCeo ? [["📊", "Dashboard", "/dashboard"]] : []),
     ["🏢", "Aggregators", "/dashboard/aggregators"],
     ["📦", "Crates", "/dashboard/crates"],
     ["💳", "Transactions", "/dashboard/transactions"],
-    ...(String(user?.role).toLowerCase() === "ceo"
-      ? [["⚙️", "Settings", "/dashboard/settings"]]
-      : []),
+    ...(isCeo ? [["⚙️", "Settings", "/dashboard/settings"]] : []),
   ];
   return (
     <aside className="w-full md:w-64 bg-deep text-white md:min-h-screen flex flex-col shrink-0">

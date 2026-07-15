@@ -7,6 +7,7 @@ import Impact from "./pages/public/Impact";
 import Investors from "./pages/public/Investors";
 import Contact from "./pages/public/Contact";
 import Auth from "./pages/public/Auth";
+import OperatorLogin from "./pages/public/OperatorLogin";
 import CEODashboard from "./pages/dashboard/CEODashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -37,10 +38,11 @@ export default function App() {
         <Route path="/investors" element={<Investors />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/operator-login" element={<OperatorLogin />} />
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute allowedRoles={["ceo", "field_operator"]}>
+            <ProtectedRoute allowedRoles={["ceo"]}>
               <CEODashboard />
             </ProtectedRoute>
           }
