@@ -113,7 +113,8 @@ def is_admin(decoded_token: dict) -> bool:
 
 def get_service_mode() -> str:
     enabled = os.getenv("FIREBASE_DATABASE_URL") and (
-        os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+        os.getenv("FIREBASE_SERVICE_ACCOUNT_B64")
+        or os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
         or os.getenv("FIREBASE_CREDENTIALS_JSON")
         or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     )
