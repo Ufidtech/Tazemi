@@ -256,7 +256,6 @@ export function Aggregators() {
   const [selected, setSelected] = useState(null);
   const [aggregators, setAggregators] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [trucks, setTrucks] = useState([]);
 
   // Top-up flow state
   const [topupOpen, setTopupOpen] = useState(false);
@@ -278,9 +277,6 @@ export function Aggregators() {
     fetchBatches()
       .then((data) => setBatches(Array.isArray(data) ? data : []))
       .catch(() => setBatches([]));
-    fetchTrucks()
-      .then((data) => setTrucks(Array.isArray(data) ? data : []))
-      .catch(() => setTrucks([]));
   }, []);
 
   const resetTopup = () => {
