@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import logo from "../../assets/Tazemi-logo.png";
 
 /**
  * Updated for NewTazemi.docx (5-page nav). Batches page not built yet —
@@ -20,6 +21,7 @@ export function Sidebar({ active }) {
     <aside className="w-full md:w-64 bg-deep text-white md:min-h-screen flex flex-col shrink-0">
       <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between md:justify-start">
         <Link to="/" className="flex items-center gap-2">
+          <img src={logo} alt="Tazémi" className="h-7 w-auto" />
           <span className="text-teal font-black text-lg">TAZÉMI</span>
           <span className="text-white/60 text-xs">DASHBOARD</span>
         </Link>

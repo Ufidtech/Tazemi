@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import logo from "../../assets/Tazemi-logo.png";
 
 export default function OperatorLogin() {
   const [operatorId, setOperatorId] = useState("");
@@ -31,12 +32,17 @@ export default function OperatorLogin() {
   return (
     <div className="min-h-screen bg-deep flex items-center justify-center p-4">
       <div className="bg-white rounded-xl p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-black text-deep mb-1">TAZÉMI</h1>
+        <div className="flex items-center gap-2 mb-1">
+          <img src={logo} alt="Tazémi" className="h-8 w-auto" />
+          <h1 className="text-2xl font-black text-deep">TAZÉMI</h1>
+        </div>
         <p className="text-sm text-gray-500 mb-6">Operator sign in</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Operator ID</label>
+            <label className="block text-sm font-medium mb-1">
+              Operator ID
+            </label>
             <input
               type="text"
               value={operatorId}
@@ -70,7 +76,8 @@ export default function OperatorLogin() {
         </form>
 
         <p className="text-xs text-gray-400 mt-6 text-center">
-          Don't have an Operator ID? Ask your CEO/admin to create one in Settings.
+          Don't have an Operator ID? Ask your CEO/admin to create one in
+          Settings.
         </p>
       </div>
     </div>
